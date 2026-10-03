@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Borghi in diorama</title>
+<link rel="icon" href="data:,">
+<meta name="description" content="Quattro borghi in diorama da esplorare nel browser. Niente modelli 3D: ogni oggetto è uno sprite in pixel art a cui viene data profondità pixel per pixel.">
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<style>
+:root{
+  color-scheme: dark;
+  --void:#15121f;
+  --panel:rgba(18,15,28,.88);
+  --line:#4a4360;
+  --ink:#f4ecd8;
+  --dim:#a79fb8;
+  --amber:#ffb85c;
+  --display:"Pixelify Sans","Courier New",monospace;
+  --mono:"DM Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--void);color:var(--ink);font-family:var(--mono);font-size:14px;line-height:1.6}
+.wrap{max-width:860px;margin:0 auto;padding:48px 16px 64px}
+h1{margin:0;font-family:var(--display);font-weight:600;font-size:clamp(30px,7vw,44px);line-height:1.05;text-shadow:0 3px 0 rgba(0,0,0,.55)}
+.lead{margin:14px 0 0;max-width:62ch;color:var(--dim)}
+.keys{display:inline-block;margin:18px 0 0;padding:6px 10px;background:var(--panel);border:1px solid var(--line);color:var(--dim);font-size:12px}
+.keys b{color:var(--amber);font-weight:500}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));margin:36px 0 0}
+.card{display:flex;flex-direction:column;gap:6px;padding:14px 16px 16px;background:var(--panel);border:1px solid var(--line);border-bottom-width:3px;color:inherit;text-decoration:none}
+.card:hover{border-color:var(--amber)}
+.card:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.card h2{margin:0;font-family:var(--display);font-weight:600;font-size:22px;line-height:1.1}
+.card .when{color:var(--amber);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.card p{margin:0;color:var(--dim);font-size:13px}
+.extra{margin:28px 0 0;padding:12px 16px;border:1px dashed var(--line);color:var(--dim);font-size:13px}
+.extra a{color:var(--amber)}
+footer{margin:48px 0 0;padding:16px 0 0;border-top:1px solid var(--line);color:var(--dim);font-size:12px}
+footer a{color:var(--amber)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>Borghi in diorama</h1>
+  <p class="lead">Quattro borghi da esplorare nel browser. Non c’è nessun modello 3D: ogni casa, albero e lampione è uno sprite in pixel art, e ogni suo pixel riceve una profondità. Cammina, parla con gli abitanti, ruota la vista, cambia l’ora del giorno.</p>
+  <p class="keys"><b>WASD</b> o frecce: cammina · <b>Z</b>: parla · <b>Q</b> / <b>E</b>: ruota · <b>T</b>: ora · <b>O</b>: ombre · su telefono: leva e tasto</p>
+
+  <div class="grid">
+    <a class="card" href="villages/borgo-duepixel.html">
+      <span class="when">tramonto</span>
+      <h2>Borgo Duepixel</h2>
+      <p>Il primo borgo: tre case colorate, una bottega e un pozzo. Sprite segnaposto disegnati dal codice.</p>
+    </a>
+    <a class="card" href="villages/borgo-delle-lanterne.html">
+      <span class="when">tramonto</span>
+      <h2>Borgo delle Lanterne</h2>
+      <p>Una pagoda, una casa del tè e un portale rosso, con lanterne di pietra lungo la strada. Pagoda e case nascono da una facciata ripetuta sui quattro lati.</p>
+    </a>
+    <a class="card" href="villages/borgo-delle-dune.html">
+      <span class="when">giorno</span>
+      <h2>Borgo delle Dune</h2>
+      <p>Un bazar, una torre di guardia, un cammello e un pontile sull’acqua. Gli oggetti nascono dal codice già con la loro profondità; il terreno viene da un foglio di mattonelle.</p>
+    </a>
+    <a class="card" href="villages/ravenbrook.html">
+      <span class="when">notte</span>
+      <h2>Ravenbrook</h2>
+      <p>Una chiesa, una locanda e un forno illuminati dalle finestre. Tutto viene da tre fogli generati da un modello di immagini e riportati alla griglia di pixel vera.</p>
+    </a>
+  </div>
+
+  <p class="extra">Per confronto: <a href="villages/borgo-duepixel-unoptimized.html">Borgo Duepixel, prima versione</a> — lampioni come luci puntiformi calcolate a ogni frame e sfocatura tilt-shift.</p>
+
+  <footer>Ogni borgo è una sola pagina e richiede WebGL. Una demo di <a href="https://github.com/martindavinci">Martin DaVinci</a>.</footer>
+</main>
+</body>
+</html>
