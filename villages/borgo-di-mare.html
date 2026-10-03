@@ -1,0 +1,1359 @@
+<!doctype html><html lang="it"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Borgo di Mare</title>
+<link rel="stylesheet" href="../vendor/fonts/fonts.css">
+<style>
+/* Layout: scena a tutto schermo; HUD agli angoli, dialogo in basso al centro, comandi touch ai lati */
+:root{
+  color-scheme: dark;
+  --void:#17121c;
+  --panel:rgba(16,13,26,.88);
+  --line:#4a4360;
+  --ink:#f4ecd8;
+  --dim:#a79fb8;
+  --amber:#ffb85c;
+  --amber-ink:#2a1c08;
+  --display:"Pixelify Sans","Courier New",monospace;
+  --mono:"DM Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+html,body{height:100%}
+body{background:var(--void);color:var(--ink);font-family:var(--mono);font-size:12px;overflow:hidden}
+#stage{position:relative;width:100%;height:100%;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block;outline:none;cursor:grab}
+#gl:active{cursor:grabbing}
+
+.top{position:absolute;inset:0 0 auto 0;display:flex;flex-wrap:wrap;gap:10px 16px;justify-content:space-between;align-items:flex-start;padding:14px 16px;pointer-events:none}
+.brand{min-width:0}
+.brand h1{margin:0;font-family:var(--display);font-weight:600;font-size:24px;line-height:1;letter-spacing:.01em;text-shadow:0 2px 0 rgba(0,0,0,.55)}
+.brand .back{display:inline-block;margin:0 0 6px;color:var(--dim);font-size:11px;line-height:1.2;text-decoration:none;pointer-events:auto;text-shadow:0 1px 0 rgba(0,0,0,.6)}
+.brand .back:hover{color:var(--amber)}
+.brand .back:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.brand p{display:inline-block;margin:8px 0 0;padding:4px 8px;background:var(--panel);border:1px solid var(--line);color:var(--dim);font-size:11px;line-height:1.5;font-variant-numeric:tabular-nums;max-width:46ch}
+.bar{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;pointer-events:auto}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-bottom-width:3px;padding:6px 10px;cursor:pointer;line-height:1.2}
+button:hover{border-color:var(--amber)}
+button:active{transform:translateY(2px);border-bottom-width:1px;margin-bottom:2px}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+button[aria-pressed="true"]{color:var(--amber)}
+
+.hint{position:absolute;left:16px;right:16px;bottom:16px;width:fit-content;margin:0 auto;box-sizing:border-box;padding:6px 12px;background:var(--panel);border:1px solid var(--line);color:var(--dim);font-size:11px;text-align:center;pointer-events:none;white-space:normal}
+.hint b{color:var(--amber);font-weight:500}
+
+.dialog{position:absolute;left:16px;right:16px;bottom:56px;max-width:620px;margin:0 auto;box-sizing:border-box;background:#0b0911;border:3px solid var(--ink);padding:12px 16px 18px;font-family:var(--display);font-size:20px;line-height:1.3;min-height:5.4em;cursor:pointer;text-align:left;color:var(--ink)}
+.dialog .who{display:block;color:var(--amber);font-size:14px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px}
+.dialog .more{position:absolute;right:12px;bottom:6px;font-size:14px;color:var(--amber);animation:bob .7s steps(2) infinite}
+@keyframes bob{50%{transform:translateY(3px)}}
+
+.sheet{position:absolute;right:16px;top:64px;width:min(340px,calc(100% - 32px));max-height:calc(100% - 150px);overflow:auto;box-sizing:border-box;background:var(--void);border:1px solid var(--line);padding:12px}
+.sheet .head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.sheet .head button{flex:0 0 auto;padding:3px 10px}
+.sheet h2{margin:0 0 4px;font-family:var(--display);font-size:16px;font-weight:600}
+.sheet p{margin:0 0 10px;color:var(--dim);font-size:11px;line-height:1.5}
+.sheet canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background:#0b0911;border:1px solid var(--line)}
+.diag .read{padding:6px 8px;border:1px solid var(--line);background:#0b0911;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.6;white-space:pre-line}
+.diag .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 8px}
+.diag .row span{flex:1 1 96px;min-width:0;color:var(--ink)}
+.diag .row button{flex:0 0 auto;min-width:40px}
+.diag .note{margin:4px 0 0}
+
+.stick,.act{display:none}
+.stick{position:absolute;left:20px;bottom:24px;width:116px;height:116px;border-radius:50%;border:2px solid var(--line);background:rgba(18,15,28,.5)}
+.stick i{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:var(--ink);opacity:.85}
+.act{position:absolute;right:24px;bottom:40px;width:72px;height:72px;border-radius:50%;background:var(--amber);color:var(--amber-ink);border:0;font-family:var(--display);font-size:22px;font-weight:600;align-items:center;justify-content:center}
+@media (pointer:coarse){
+  .stick{display:block}
+  .act{display:flex}
+  .hint{bottom:156px}
+  .dialog{bottom:196px;font-size:18px}
+}
+.fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font-family:var(--display);font-size:18px;background:var(--void)}
+@media (max-width:520px){ .brand h1{font-size:20px} .brand p{font-size:10px} button{padding:6px 8px} }
+@media (prefers-reduced-motion:reduce){ .dialog .more{animation:none} }
+</style>
+
+<div id="stage">
+  <canvas id="gl" tabindex="0" aria-label="Borgo diorama sul mare: cammina con WASD, parla con Z, ruota con Q ed E"></canvas>
+
+  <div class="top">
+    <div class="brand">
+      <a class="back" href="../index.html">← tutti i borghi</a>
+      <h1>Borgo di Mare</h1>
+      <p id="stats">Estrusione dei pixel in corso…</p>
+    </div>
+    <div class="bar" role="toolbar" aria-label="Comandi della scena">
+      <button id="bRotL" type="button" aria-label="Ruota a sinistra">⟲ Q</button>
+      <button id="bRotR" type="button" aria-label="Ruota a destra">E ⟳</button>
+      <button id="bTod" type="button">Ora: tramonto</button>
+      <button id="bShadow" type="button" aria-pressed="true">Ombre</button>
+      <button id="bSheet" type="button" aria-pressed="false">Sprite 2D</button>
+      <button id="bSnd" type="button" aria-pressed="true">Suono</button>
+      <button id="bDiag" type="button" aria-pressed="false">Diagnostica</button>
+    </div>
+  </div>
+
+  <aside id="sheet" class="sheet" hidden>
+    <div class="head"><h2>Da qui nasce tutto</h2><button type="button" data-close aria-label="Chiudi il pannello">✕</button></div>
+    <p id="sheetText"></p>
+    <canvas id="atlas" width="8" height="8"></canvas>
+  </aside>
+
+  <aside id="diag" class="sheet diag" hidden>
+    <div class="head"><h2>Diagnostica</h2><button type="button" data-close aria-label="Chiudi il pannello">✕</button></div>
+    <p>Cambia una voce alla volta e confronta i millisecondi per frame: quelli si sommano e si sottraggono, gli fps no.</p>
+    <p class="read" id="dRead">In attesa della prima misura…</p>
+    <div class="row" role="group" aria-label="Risoluzione di disegno"><span>Risoluzione</span>
+      <button type="button" data-res="auto" aria-pressed="true">Auto</button><button type="button" data-res="0.5" aria-pressed="false">0,5×</button><button type="button" data-res="1" aria-pressed="false">1×</button><button type="button" data-res="1.5" aria-pressed="false">1,5×</button></div>
+    <div class="row"><span>Illuminazione</span><button id="dLight" type="button" aria-pressed="true">Sì</button></div>
+    <p class="note" id="dNote"></p>
+  </aside>
+
+  <div id="hint" class="hint"></div>
+
+  <div id="dialog" class="dialog" role="button" tabindex="0" hidden>
+    <span class="who" id="dWho"></span><span id="dText"></span><span class="more" id="dMore">▼</span>
+  </div>
+
+  <div id="stick" class="stick" aria-hidden="true"><i id="knob"></i></div>
+  <button id="bAct" class="act" type="button" aria-label="Parla o esamina">Z</button>
+
+  <div id="fallback" class="fallback" hidden>Il browser non ha potuto avviare WebGL, quindi il borgo non si può disegnare.</div>
+</div>
+
+<script src="../vendor/three/three.min.js"></script>
+<script>
+(function () {
+'use strict';
+const $ = (id) => document.getElementById(id), T0 = performance.now();
+if (!window.THREE) { $('fallback').hidden = false; return; }
+
+const PPU = 16, P = 1 / PPU, W = 40, D = 28, PXW = W * PPU, PXD = D * PPU;
+const PITCH = 0.62, SPR_Y = 1 / Math.cos(PITCH); // le figurine sono verticali: si allungano di 1/cos per avere pixel quadrati a schermo
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const coarse = matchMedia('(pointer: coarse)').matches;
+
+/* ---------- utilità ---------- */
+function hash2(x, y) { let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263)) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; }
+function vnoise(x, y) { const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi; const a = hash2(xi, yi), b = hash2(xi + 1, yi), c = hash2(xi, yi + 1), d = hash2(xi + 1, yi + 1); const u = fx * fx * (3 - 2 * fx), v = fy * fy * (3 - 2 * fy); return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v; }
+function rng(a) { return function () { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const R = rng(4071);
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const lerp = (a, b, t) => a + (b - a) * t;
+
+/* ---------- i disegni: ogni oggetto nasce dal codice, pixel per pixel, con il colore, quanto sporge davanti e dietro, e le sue regole ---------- */
+const F_ROOF = 1, F_GLOW = 2, F_WRAP = 4, F_TEXTOP = 8, F_TEXALL = 16;   // tetto inclinato · acceso di notte · la facciata gira l'angolo · tetto preso da un ritaglio · tutto il fianco preso da un ritaglio
+const shade = (c, f) => (Math.min(255, (c >> 16 & 255) * f) << 16) | (Math.min(255, (c >> 8 & 255) * f) << 8) | Math.min(255, (c & 255) * f);
+const mixc = (a, b, t) => { const m = (s) => Math.round((a >> s & 255) + ((b >> s & 255) - (a >> s & 255)) * t); return m(16) << 16 | m(8) << 8 | m(0); };
+const jit = (c, x, y, k, amt) => shade(c, 1 + (hash2(x * 7 + k * 31, y * 13 + k * 17) - .5) * amt);
+const ART = [], art = {};
+class Pix {
+  constructor(key, w, h, name, meta) {
+    Object.assign(this, { key, w, h, name, meta: meta || {} });
+    const n = w * h; this.c = new Int32Array(n).fill(-1); this.zf = new Int8Array(n); this.zb = new Int8Array(n); this.f = new Uint8Array(n);
+    ART.push(this); art[key] = this;
+  }
+  in(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h; }
+  on(x, y) { return this.in(x, y) && this.c[y * this.w + x] >= 0; }
+  set(x, y, c, zf, zb, f) { if (!this.in(x, y)) return; const i = y * this.w + x; this.c[i] = c; this.zf[i] = zf; this.zb[i] = zb === undefined ? -zf : zb; this.f[i] = f || 0; }
+  rect(x0, y0, w, h, c, zf, zb, f) { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) this.set(x, y, typeof c === 'function' ? c(x, y) : c, zf, zb, f); }
+  paint(x, y, c) { if (this.on(x, y)) this.c[y * this.w + x] = c; }
+  // fila quadrata: profonda quanto è larga, centrata (torri, lampioni)
+  sq(y, w, fn, f) { const x0 = (this.w - w) >> 1; for (let x = x0; x < x0 + w; x++) { const c = fn(x - x0, w, x); if (c >= 0) this.set(x, y, c, w >> 1, -(w >> 1), typeof f === 'function' ? f(x - x0) : f || 0); } }
+  // fila tonda: ogni pixel è una fetta di cilindro (botti, vasi, tronchi)
+  round(y, x0, x1, fn, f, k) { const R = (x1 - x0 + 1) / 2, c = (x0 + x1 + 1) / 2; for (let x = x0; x <= x1; x++) { const d = x + .5 - c, z = Math.max(1, Math.round(Math.sqrt(Math.max(0, R * R - d * d)) * (k || 1))); this.set(x, y, typeof fn === 'function' ? fn(x, y, d / R) : fn, z, -z, f || 0); } }
+  // bordo più scuro sulla sagoma
+  rim(f) { const out = []; for (let y = 0; y < this.h; y++) for (let x = 0; x < this.w; x++) if (this.on(x, y) && (!this.on(x - 1, y) || !this.on(x + 1, y) || !this.on(x, y - 1))) out.push(y * this.w + x); for (const i of out) this.c[i] = shade(this.c[i], f); return this; }
+}
+
+/* ritagli: tetti, legno, scogli e pesce, ripetuti lungo la profondità; non si appoggiano mai nel mondo */
+const PATCHES = ['tex_slate', 'tex_wood', 'tex_rock', 'tex_fish'];
+function patch(key, name, fn) { const s = new Pix(key, 16, 16, name); for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) s.set(x, y, fn(x, y), 1, -1); }
+patch('tex_slate', 'Ardesia', (x, y) => y % 4 === 3 ? 0x3e444d : jit((x + (y >> 2) * 3) % 6 === 0 ? 0x4c535d : 0x5c6570, x, y, 1, .1));
+patch('tex_wood', 'Assi del gozzo', (x, y) => x === 0 ? 0x7a4a2a : x === 1 ? 0x4a2e1a : (y === 6 || y === 7) ? jit(0xc99c66, x, y, 2, .08) : (x - 2) % 4 === 3 ? 0x7d5634 : jit(0xa9784a, x, y, 3, .1));
+patch('tex_rock', 'Scoglio', (x, y) => { const h = hash2(x * 3 + 5, y * 7 + 1); return h < .07 ? 0xb9b47a : h > .9 ? 0x6a665f : jit(0x8f8a82, x, y, 4, .14); });
+patch('tex_fish', 'Pesce sul ghiaccio', (x, y) => x === 0 ? 0x9a744a : y % 3 === 2 ? 0xe6eef2 : (x + y * 5) % 8 === 1 ? 0x2a3440 : y % 3 === 0 ? 0x6f8ea8 : 0xc6d0d6);
+
+/* case a torre: facciata dipinta, persiane verdi, tetto d'ardesia o di coppi che scende all'indietro una riga alla volta */
+const GREEN = 0x3f7d4e, GREEN_D = 0x2c5c3a, IRON = 0x2e3036;
+function windowAt(s, cx, yT, hd, o, R0, tall) {
+  const closed = !tall && R0() < (o.closed || .25), lit = !closed && R0() < (o.lit || .45), flowers = !tall && R0() < .45, gb = yT + (tall ? 12 : 10);
+  for (let y = yT + 2; y <= gb + 1; y++) for (let x = cx - 3; x <= cx + 2; x++) s.set(x, y, o.trim, hd, -hd, F_WRAP);                    // cornice dipinta
+  if (!tall) for (let x = cx - 4; x <= cx + 3; x++) s.set(x, yT + 12, shade(o.trim, .8), hd + 2, -hd, F_WRAP);                         // davanzale
+  if (closed) { for (let y = yT + 3; y <= gb; y++) for (let x = cx - 2; x <= cx + 1; x++) s.set(x, y, x === cx - 1 && y > yT + 3 ? GREEN_D : (y % 2) ? GREEN : GREEN_D, hd + 1, -hd, F_WRAP); return; }
+  for (let y = yT + 3; y <= gb; y++) for (let x = cx - 2; x <= cx + 1; x++) {
+    let c = lit ? (y <= yT + 4 ? 0xf6cf78 : 0xdc9c4c) : (x === cx - 2 && y <= yT + 5 ? 0x6d8090 : 0x2c3844);
+    if ((x === cx - 1 || x === cx) && y === yT + 6) c = lit ? 0x8a5a30 : 0x1e262e;
+    s.set(x, y, c, hd - 3, -hd, lit ? F_GLOW : 0);
+  }
+  for (let y = yT + 2; y <= gb + 1; y++) for (const x of [cx - 5, cx - 4, cx + 3, cx + 4]) s.set(x, y, (y % 2) ? GREEN : GREEN_D, hd + 1, -hd, F_WRAP);   // persiane aperte
+  if (flowers) for (let x = cx - 3; x <= cx + 2; x++) s.set(x, yT + 11, (x * 3 + yT) % 4 < 2 ? 0xd8344a : 0x3f8a3e, hd + 2, -hd, F_WRAP);
+}
+function house(key, name, o) {
+  const w = o.w, hd = o.hd, R = hd + 2, ov = 1, CHM = 7, FH = 14, GF = 18, wall = 3 + o.floors * FH + GF;
+  const W2 = w + 2 * ov, H = CHM + R + wall, y0 = CHM + R, R0 = rng(o.seed);
+  const s = new Pix(key, W2, H, name, { hd, grow: y0 + 4, gcol: ov + (w >> 1) });
+  // intonaco con macchie leggere, zoccolo più scuro, cantonali dipinti agli spigoli
+  for (let y = y0; y < H; y++) for (let x = ov; x < ov + w; x++) {
+    const lx = x - ov, ly = y - y0, fb = H - 1 - y, qw = (Math.floor(ly / 4) % 2) ? 2 : 3;
+    let c = shade(o.col, 1 + (vnoise(x / 4 + o.seed, y / 5) - .5) * .12 + (hash2(x + o.seed * 7, y * 3) - .5) * .05);
+    if (fb < 4) c = jit(shade(o.col, .74), x, y, 3, .08);
+    else if (lx < qw || lx >= w - qw) c = ly % 4 === 3 ? shade(o.trim, .84) : o.trim;
+    s.set(x, y, c, hd, -hd, F_WRAP);
+  }
+  for (let x = 0; x < W2; x++) { s.set(x, y0, shade(o.trim, .92), hd + 1, -hd - 1, F_WRAP); s.set(x, y0 + 1, o.trim, hd + 1, -hd - 1, F_WRAP); }   // cornicione
+  for (let x = ov; x < ov + w; x++) s.set(x, y0 + 2, shade(o.col, .62), hd, -hd, F_WRAP);
+  const cols = o.cols || [Math.round(w * .27), w - 1 - Math.round(w * .27)];
+  for (let f = 0; f < o.floors; f++) {
+    const yT = y0 + 3 + f * FH;
+    if (f > 0) for (let x = ov; x < ov + w; x++) s.set(x, yT, shade(o.trim, .9), hd + 1, -hd, F_WRAP);                                 // marcapiano
+    cols.forEach((c0, i) => {
+      const cx = c0 + ov;
+      if (o.balc && o.balc[0] === f && o.balc[1] === i) {
+        windowAt(s, cx, yT, hd, o, R0, true);
+        for (let x = cx - 6; x <= cx + 5; x++) { s.set(x, yT + 13, jit(0xcfc4b0, x, 1, 2, .08), hd + 5, -hd, F_WRAP); s.set(x, yT + 10, IRON, hd + 5, -hd, F_WRAP); if (!((x - cx) & 1)) { s.set(x, yT + 11, IRON, hd + 5, -hd, F_WRAP); s.set(x, yT + 12, IRON, hd + 5, -hd, F_WRAP); } }
+        for (const x of [cx - 5, cx + 4]) s.set(x, yT + 14, shade(o.trim, .75), hd + 3, -hd, F_WRAP);                                   // mensole
+        for (const x of [cx - 6, cx + 5]) s.set(x, yT + 9, (x & 1) ? 0xd8344a : 0x3f8a3e, hd + 5, -hd, F_WRAP);                          // gerani sulla ringhiera
+      } else windowAt(s, cx, yT, hd, o, R0, false);
+    });
+  }
+  // piano terra: portone ad arco con gradino, e a volte una bottega accesa con la tenda
+  const dx = o.door + ov;
+  for (let y = H - 14; y <= H - 2; y++) for (let x = dx - 4; x <= dx + 3; x++) s.set(x, y, shade(o.trim, .95), hd, -hd, F_WRAP);
+  for (let y = H - 13; y <= H - 2; y++) for (let x = dx - 3; x <= dx + 2; x++) {
+    if (y === H - 13 && (x === dx - 3 || x === dx + 2)) continue;
+    s.set(x, y, y === H - 13 ? 0x4a2a18 : ((x - dx) & 1) ? 0x6e4128 : 0x7c4b2e, hd - 3, -hd);
+  }
+  s.set(dx + 1, H - 8, 0xd8b04a, hd - 2, -hd);
+  for (let x = dx - 5; x <= dx + 4; x++) s.set(x, H - 1, 0xa49c8e, hd + 2, -hd);
+  if (o.shop !== undefined) {
+    const sx = o.shop + ov;
+    for (let y = H - 13; y <= H - 2; y++) for (let x = sx - 5; x <= sx + 4; x++) s.set(x, y, shade(o.trim, .95), hd, -hd, F_WRAP);
+    for (let y = H - 12; y <= H - 2; y++) for (let x = sx - 4; x <= sx + 3; x++) {
+      if (y === H - 12 && (x === sx - 4 || x === sx + 3)) continue;
+      const c = y === H - 6 || y === H - 9 ? 0x6a4428 : (hash2(x * 3, y * 5) < .3 ? 0xe8b860 : 0xc88a48);
+      s.set(x, y, c, hd - 6, -hd, F_GLOW);
+    }
+    for (let k = 0; k < 3; k++) for (let x = sx - 6; x <= sx + 5; x++) {
+      const c = k === 2 && (x & 1) ? shade(o.awn, .75) : (((x - sx + 6) >> 1) & 1) ? 0xf2ece0 : o.awn;
+      s.set(x, H - 16 + k, c, hd + 2 + 3 * k, -hd);
+    }
+  }
+  // tetto: una riga più avanti di quella sopra, dal colmo alla gronda
+  for (let k = 0; k < R; k++) {
+    const y = CHM + k;
+    for (let x = 0; x < W2; x++) {
+      let c;
+      if (o.roof === 'coppi') { c = x % 3 === 0 ? 0x8a3c26 : x % 3 === 1 ? 0xc4673f : 0xb0553a; if (k % 4 === 3) c = shade(c, .84); c = jit(c, x, y, 5, .06); }
+      else { c = k % 3 === 2 ? 0x47505b : (x + (Math.floor(k / 3) % 2) * 2) % 4 === 0 ? 0x535b66 : 0x5d6672; c = jit(c, x, y, 5, .08); }
+      if (k === 0) c = o.roof === 'coppi' ? 0x7a3220 : 0x3c424a;
+      if (k === R - 1) c = shade(c, .7);
+      if (x === 0 || x === W2 - 1) c = shade(c, .78);
+      s.set(x, y, c, k + 1, -(k + 1), F_ROOF);
+    }
+  }
+  // comignolo: un blocco dritto sul colmo, non segue la falda
+  const chx = ov + (o.chim !== undefined ? o.chim : w - 9);
+  for (let y = 2; y < CHM; y++) for (let x = chx; x < chx + 4; x++) s.set(x, y, jit(shade(o.col, .85), x, y, 9, .1), 2, -2);
+  for (let x = chx - 1; x < chx + 5; x++) s.set(x, 1, 0x4a4e56, 3, -3);
+  for (let x = chx; x < chx + 4; x++) s.set(x, 0, 0x3a3e46, 2, -2);
+  return s;
+}
+house('casa_ocra', 'Casa ocra', { w: 34, hd: 15, floors: 4, col: 0xd9a24a, trim: 0xf2e6c8, roof: 'slate', door: 9, balc: [1, 1], seed: 11, lit: .5 });
+house('casa_rosa', 'Casa rosa', { w: 30, hd: 15, floors: 4, col: 0xe2948a, trim: 0xf5e8d8, roof: 'slate', door: 7, shop: 20, awn: 0x3a6aa8, seed: 23 });
+house('casa_terra', 'Casa color terracotta', { w: 30, hd: 15, floors: 5, col: 0xc66a44, trim: 0xf0d8b0, roof: 'coppi', door: 15, seed: 37, chim: 4 });
+house('casa_gialla', 'Casa gialla', { w: 36, hd: 15, floors: 3, col: 0xecc65a, trim: 0xfbf1d8, roof: 'slate', door: 26, shop: 10, awn: 0x2f7a5a, balc: [2, 0], seed: 41 });
+house('casa_pesca', 'Casa color pesca', { w: 32, hd: 15, floors: 4, col: 0xee9a62, trim: 0xf6e8d2, roof: 'coppi', door: 16, seed: 53, chim: 3, lit: .55 });
+
+/* chiesa: facciata a fasce bianche e grigie, portale strombato, rosone acceso; il frontone è un triangolo pieno che va indietro come un tetto */
+function chiesa() {
+  const w = 58, hd = 27, wall = 44, gh = 14, crossH = 8, ov = 1, W2 = w + 2 * ov, H = crossH + gh + wall, y0 = crossH + gh, cx = W2 / 2;
+  const s = new Pix('chiesa', W2, H, 'Chiesa di San Pietro', { tex: 'tex_slate', gable: cx, hd });
+  const band = (x, y) => jit(Math.floor((H - 1 - y) / 3) % 2 ? 0x555963 : 0xe9e3d3, x, y, 6, .06);
+  for (let y = y0; y < H; y++) for (let x = ov; x < ov + w; x++) s.set(x, y, band(x, y), hd, -hd);
+  for (let y = H - 3; y < H; y++) for (let x = ov; x < ov + w; x++) s.set(x, y, jit(0x8e887c, x, y, 2, .1), hd + 1, -hd);          // zoccolo
+  for (const x0 of [ov, W2 - ov - 3, ov + 17, W2 - ov - 20]) for (let y = y0; y < H - 3; y++) for (let x = x0; x < x0 + 3; x++) s.set(x, y, jit(0xefe9da, x, y, 7, .05), hd + 1, -hd);   // lesene
+  // portale: archivolto sporgente, porta in fondo alla strombatura
+  const py = H - 3;
+  for (let y = py - 21; y < py; y++) for (let x = cx - 8; x < cx + 8; x++) { const d = Math.hypot(x + .5 - cx, y + .5 - (py - 14)); if (y < py - 14 && d > 8) continue; s.set(x, y, Math.floor(d) % 2 ? 0x555963 : 0xeee8da, hd + 2, -hd); }
+  for (let y = py - 19; y < py; y++) for (let x = cx - 6; x < cx + 6; x++) { const d = Math.hypot(x + .5 - cx, y + .5 - (py - 13)); if (y < py - 13 && d > 6) continue; const deep = y >= py - 12 && x >= cx - 4 && x < cx + 4; s.set(x, y, deep ? (((x - cx) & 1) ? 0x5a3420 : 0x6a3e26) : y < py - 12 ? (hash2(x, y) < .2 ? 0xd8b050 : 0x3a5a9a) : 0xd8d0c0, deep ? hd - 7 : hd - 3, -hd); }
+  // rosone e due monofore accese
+  const ry = y0 + 9;
+  for (let y = ry - 6; y <= ry + 6; y++) for (let x = cx - 6; x < cx + 6; x++) {
+    const d = Math.hypot(x + .5 - cx, y + .5 - ry), a = Math.atan2(y + .5 - ry, x + .5 - cx);
+    if (d > 6.2) continue;
+    if (d > 4.8) s.set(x, y, 0xf2ecde, hd + 1, -hd);
+    else s.set(x, y, d < 1.2 ? 0xf0c050 : (Math.floor((a + Math.PI) / (Math.PI / 4)) % 2 ? 0xd84a3a : 0x3a6ad8), hd - 2, -hd, F_GLOW);
+  }
+  for (const lx of [ov + 9, W2 - ov - 11]) for (let y = y0 + 12; y < y0 + 26; y++) for (let x = lx; x < lx + 2; x++) s.set(x, y, y === y0 + 12 ? 0xf2ecde : 0xe0a850, y === y0 + 12 ? hd : hd - 2, -hd, y === y0 + 12 ? 0 : F_GLOW);
+  // frontone: righe piene per tutta la profondità; i fianchi a gradini leggono l'ardesia
+  for (let r = 0; r < gh; r++) {
+    const hw = Math.round((r + 1) / gh * (W2 / 2)), y = crossH + r;
+    for (let x = cx - hw; x < cx + hw; x++) { const edge = x < cx - hw + 2 || x >= cx + hw - 2; s.set(x, y, edge ? 0x3e424a : band(x, y), hd + 1, -hd - 1, F_TEXALL); }
+  }
+  for (let y = 0; y < crossH; y++) for (let x = cx - 1; x < cx + 1; x++) s.set(x, y, IRON, 1, -1);
+  for (let x = cx - 3; x < cx + 3; x++) s.set(x, 2, IRON, 1, -1);
+  return s;
+}
+chiesa();
+
+/* campanile: pianta quadrata, a fasce, con la bifora delle campane e la cuspide */
+function campanile() {
+  const W = 24, H = 120, s = new Pix('campanile', W, H, 'Campanile a strisce');
+  const stripe = (y) => Math.floor(y / 4) % 2 ? 0x585c66 : 0xe8e2d2;
+  for (let y = 0; y < 6; y++) s.sq(y, 2, () => IRON, F_WRAP);
+  for (let x = 9; x < 15; x++) s.set(x, 2, IRON, 1, -1);
+  s.sq(6, 2, () => 0x9a7a3a, F_WRAP); s.sq(7, 4, (lx) => lx === 0 ? 0xb8954a : 0x8a6a30, F_WRAP);
+  for (let y = 8; y < 30; y++) s.sq(y, 2 + 2 * Math.floor((y - 8) * 9 / 21), (lx, w, x) => jit((y - 8) % 3 === 2 ? 0x8e4630 : lx % 3 === 0 ? 0x9e5034 : 0xb35d3e, x, y, 3, .08), F_WRAP);
+  s.sq(30, 22, () => 0xeee8da, F_WRAP); s.sq(31, 22, () => 0x4e525c, F_WRAP);
+  for (let y = 32; y < 52; y++) s.sq(y, 20, (lx, w, x) => jit(stripe(y), x, y, 4, .05), F_WRAP);
+  for (const o0 of [3, 11]) for (let y = 35; y < 51; y++) for (let lx = o0; lx < o0 + 6; lx++) {
+    if (y === 35 && (lx === o0 || lx === o0 + 5)) continue;
+    const x = 2 + lx, bw = [2, 4, 4, 4, 6, 6][y - 40], bell = bw && Math.abs(lx - o0 - 2.5) < bw / 2;
+    if (bell) s.set(x, y, lx - o0 < 3 ? 0xc89a48 : 0x9a7030, 4, -4, F_WRAP);
+    else if (y === 46 && lx === o0 + 2) s.set(x, y, 0x3a3020, 4, -4, F_WRAP);
+    else s.set(x, y, 0x241f2a, 2, -10, F_WRAP);
+  }
+  s.sq(52, 22, () => 0xeee8da, F_WRAP); s.sq(53, 22, () => 0x4e525c, F_WRAP);
+  for (let y = 54; y < 112; y++) s.sq(y, 20, (lx, w, x) => jit(stripe(y), x, y, 4, .05), F_WRAP);
+  // orologio: le lancette segnano quasi le sette
+  for (let y = 57; y < 68; y++) for (let x = 6; x < 18; x++) {
+    const dx = x + .5 - 12, dy = y + .5 - 62.5, d = Math.hypot(dx, dy); if (d > 5.2) continue;
+    const ang = Math.atan2(dx, -dy), onH = d < 3.2 && Math.abs(ang - 3.55) < .35, onM = d < 4.4 && Math.abs(ang) < .3;
+    s.set(x, y, d > 4.3 ? 0x2a2a30 : onH || onM ? 0x2a2a30 : 0xf4efe2, 11, -11, F_WRAP);
+  }
+  for (const y0 of [80, 96]) for (let y = y0; y < y0 + 6; y++) for (let x = 11; x < 13; x++) s.set(x, y, 0x241f2a, 7, -10, F_WRAP);
+  for (let y = 112; y < 120; y++) s.sq(y, 24, (lx, w, x) => (y - 112) % 4 === 3 || (lx + (y >> 2) * 3) % 8 === 0 ? 0x7a756a : jit(0x9c968a, x, y, 2, .1), F_WRAP);
+  return s;
+}
+campanile();
+
+/* faro: torre quadrata bianca con le fasce rosse, ballatoio e lanterna di vetro che si accende */
+function faro() {
+  const W = 26, H = 100, s = new Pix('faro', W, H, 'Faro del molo');
+  for (let y = 0; y < 3; y++) s.sq(y, 2, () => IRON, F_WRAP);
+  [4, 8, 10, 12, 14, 14].forEach((w, k) => s.sq(3 + k, w, (lx, ww, x) => jit(lx < ww / 3 ? 0x9a4a38 : 0x7e3a2c, x, k, 2, .06), F_WRAP));
+  for (let y = 9; y < 19; y++) s.sq(y, 12, (lx) => y === 9 || y === 18 || lx === 0 || lx === 11 || lx === 5 || lx === 6 ? IRON : y === 10 ? 0xfffbe0 : 0xfff0b0, (lx) => F_WRAP | (y > 9 && y < 18 && lx !== 0 && lx !== 11 && lx !== 5 && lx !== 6 ? F_GLOW : 0));
+  s.sq(19, 22, () => IRON, F_WRAP); s.sq(20, 22, (lx) => lx & 1 ? IRON : 0xcfc8b8, F_WRAP); s.sq(21, 22, (lx, w, x) => jit(0x8a857c, x, 21, 2, .1), F_WRAP); s.sq(22, 18, () => 0x6a665e, F_WRAP);
+  for (let y = 23; y < 90; y++) {
+    const w = y < 56 ? 14 : 16, red = (y >= 30 && y < 38) || (y >= 62 && y < 70);
+    s.sq(y, w, (lx, ww, x) => { const win = (y >= 44 && y < 48 || y >= 74 && y < 78) && (lx === ww / 2 - 1 || lx === ww / 2); return win ? 0x2a2a32 : jit(red ? 0xb5372f : 0xefe9dc, x, y, 3, .05) ; }, F_WRAP);
+  }
+  for (let y = 90; y < 100; y++) s.sq(y, 24, (lx, w, x) => { if (y > 91 && lx >= 10 && lx < 14) return 0x5a3a24; if (y === 91 && (lx === 11 || lx === 12)) return 0x5a3a24; return (y - 90) % 3 === 2 || (lx + (y >= 93 ? 3 : 0)) % 6 === 0 ? 0x8a8478 : jit(0xb0a898, x, y, 2, .1); }, F_WRAP);
+  return s;
+}
+faro();
+
+/* muri a secco: corsi di pietre di altezza e lunghezza diverse, giunti scuri */
+function stoneWall(s, x0, y0, w, h, hd, base, seed) {
+  const R1 = rng(seed); let y = y0 + h;
+  while (y > y0) {
+    const yt = Math.max(y0, y - 3 - (R1() < .5 ? 1 : 0)); let x = x0 - Math.floor(R1() * 4);
+    while (x < x0 + w) {
+      const sw = 4 + Math.floor(R1() * 5), c = shade(base, .82 + R1() * .32);
+      for (let yy = yt; yy < y; yy++) for (let xx = Math.max(x0, x); xx < Math.min(x0 + w, x + sw); xx++) s.set(xx, yy, yy === y - 1 || xx === x + sw - 1 ? shade(base, .55) : jit(c, xx, yy, 4, .08), hd, -hd);
+      x += sw;
+    }
+    y = yt;
+  }
+}
+
+/* edicola votiva nel muro: nicchia che rientra, Madonnina, lumino acceso */
+function edicola() {
+  const W = 44, H = 34, s = new Pix('edicola', W, H, 'Edicola votiva', { hd: 4 });
+  stoneWall(s, 0, 14, W, 20, 4, 0xa89c88, 77);
+  for (let x = 0; x < W; x++) s.set(x, 14, jit(0xc8bca8, x, 14, 2, .08), 5, -5);
+  for (let y = 5; y < 28; y++) for (let x = 15; x < 29; x++) s.set(x, y, jit(0xeadccb, x, y, 2, .05), 6, -4);
+  for (let k = 0; k < 5; k++) for (let x = 18 - k; x < 26 + k; x++) s.set(x, k, k === 0 ? 0x7a3220 : (x % 3 === 0 ? 0x8a3c26 : 0xc06440), 3 + k, -4, F_ROOF);
+  for (let y = 8; y < 25; y++) for (let x = 17; x < 27; x++) {
+    if ((y === 8 && (x < 19 || x > 24)) || (y === 9 && (x < 18 || x > 25))) continue;
+    s.set(x, y, hash2(x * 5, y * 3) < .08 ? 0xd8b850 : 0x24346a, 1, -4);
+  }
+  // la Madonnina: velo bianco, viso, manto azzurro
+  s.set(21, 11, 0xf4f0e8, 3, -4); s.set(22, 11, 0xf4f0e8, 3, -4);
+  for (let y = 12; y < 14; y++) for (let x = 20; x < 24; x++) s.set(x, y, x === 20 || x === 23 ? 0xf4f0e8 : 0xecc4a0, 3, -4);
+  for (let y = 14; y < 22; y++) { const hw = 2 + Math.floor((y - 14) / 3); for (let x = 22 - hw; x < 22 + hw; x++) s.set(x, y, x === 21 || x === 22 ? (y < 17 ? 0xe8e4f0 : 0xc8443a) : 0x3a62b4, 3, -4); }
+  s.set(21, 22, 0xffe070, 4, -4, F_GLOW); s.set(22, 22, 0xffd050, 4, -4, F_GLOW);
+  for (let y = 23; y < 25; y++) for (let x = 20; x < 24; x++) s.set(x, y, x === 20 || x === 23 ? 0x8a2a20 : 0xd8402a, 4, -4, F_GLOW);
+  for (let x = 16; x < 28; x++) s.set(x, 25, jit(0xd8ccb8, x, 25, 3, .08), 8, -4);
+  for (const vx of [16, 26]) { for (let y = 22; y < 25; y++) for (let x = vx; x < vx + 2; x++) s.set(x, y, 0xb8603e, 7, -4); s.set(vx, 21, 0xe03a4a, 7, -4); s.set(vx + 1, 21, 0xf4f0e8, 7, -4); s.set(vx, 20, 0x3f8a3e, 7, -4); }
+  return s;
+}
+edicola();
+
+/* vigna sul terrazzamento: muretto a secco davanti, filare di viti qualche pixel più indietro */
+function vigna() {
+  const W = 64, H = 26, s = new Pix('vigna', W, H, 'Vigna sui terrazzamenti', { hd: 4 }), R1 = rng(91);
+  stoneWall(s, 0, 14, W, 12, 4, 0x9a907e, 5);
+  for (let x = 0; x < W; x++) s.set(x, 14, jit(0xb4aa96, x, 14, 3, .1), 4, -4);
+  for (const px of [2, 22, 42, 61]) for (let y = 1; y < 14; y++) s.set(px, y, y === 1 ? 0x9a8462 : 0x7a6448, -7, -9);
+  for (let x = 0; x < W; x++) {
+    const top = 3 + Math.round(vnoise(x / 4.5, 3.3) * 3);
+    for (let y = top; y <= 11; y++) { const l = (vnoise(x / 3 + 9, y / 3) - .5) + (top + 2 - y) * .12; s.set(x, y, jit(l > .2 ? 0x7ab24e : l > -.1 ? 0x5a9a3e : 0x3f7a30, x, y, 6, .12), -5, -14); }
+    if (hash2(x, 77) < .22) for (let y = 12; y < 14; y++) s.set(x, y, 0x5a4232, -8, -10);
+  }
+  for (let k = 0; k < 11; k++) { const gx = 2 + Math.floor(R1() * 59), gy = 7 + Math.floor(R1() * 3); for (const [a, b] of [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2]]) s.set(gx + a, gy + b, (a + b) % 2 ? 0x7c3e84 : 0x5a2a62, -4, -14); }
+  return s;
+}
+vigna();
+
+/* alberi: chioma tornita (ogni riga è un disco; raggio e asse smussati su cinque righe, a scatti di tre pixel), tronco tondo */
+function tree(key, name, o) {
+  const W = o.W, potH = o.pot ? 8 : 0, H = o.ch + o.th + potH, s = new Pix(key, W, H, name), runs = [];
+  const inC = (x, y) => { const dx = (x + .5 - W / 2) / (W / 2 - .5), dy = (y + .5 - o.ch / 2) / (o.ch / 2); return dx * dx + dy * dy * (o.flat || 1) < 1 - .24 * vnoise(x / 2.6 + o.seed, y / 2.6); };
+  for (let y = 0; y < o.ch; y++) { let a = -1, b = -1; for (let x = 0; x < W; x++) if (inC(x, y)) { if (a < 0) a = x; b = x; } runs.push(a < 0 ? null : [a, b]); }
+  for (let y = 0; y < o.ch; y++) {
+    if (!runs[y]) continue; let rs = 0, cs = 0, n = 0;
+    for (let k = y - 2; k <= y + 2; k++) if (runs[k]) { rs += (runs[k][1] - runs[k][0] + 1) / 2; cs += (runs[k][0] + runs[k][1] + 1) / 2; n++; }
+    const Rq = Math.max(3, Math.round(rs / n / 3) * 3), cq = cs / n;
+    for (let x = runs[y][0]; x <= runs[y][1]; x++) {
+      if (!inC(x, y)) continue;
+      const dx = (x + .5 - W / 2) / (W / 2), dy = (y + .5 - o.ch / 2) / (o.ch / 2), l = -dx * .45 - dy * .65 + (hash2(x * 3 + o.seed, y * 7) - .5) * .55;
+      const z = Math.max(1, Math.round(Math.sqrt(Math.max(0, Rq * Rq - (x + .5 - cq) * (x + .5 - cq)))));
+      const fruit = o.fruit && hash2(x * 5 + o.seed, y * 3) < .075 && y > 1 && y < o.ch - 2;
+      s.set(x, y, fruit ? 0xf4d43c : o.pal[l > .45 ? 3 : l > .05 ? 2 : l > -.35 ? 1 : 0], fruit ? z + 1 : z);
+    }
+  }
+  for (let y = o.ch - 3; y < o.ch + o.th; y++) {
+    const c = Math.round(W / 2 + (o.lean || 0) * (o.ch + o.th - y) / o.th) - 1;
+    for (let x = c - (o.tw || 1) + 1; x <= c + 1; x++) if (!s.on(x, y) || y >= o.ch) s.set(x, y, x === c + 1 ? o.bark[1] : o.bark[0], o.tw > 1 ? 2 : 1);
+  }
+  if (o.pot) for (let y = H - potH; y < H; y++) { const k = y - (H - potH), hw = k === 0 ? 6 : k < 2 ? 5 : 5 - (k >> 2); s.round(y, (W >> 1) - hw, (W >> 1) + hw - 1, (x, yy, u) => k === 0 ? 0xd27c52 : k === 1 ? 0x4a3424 : shade(u < -.3 ? 0xc8704a : 0xb05a3a, 1 - (k > 5 ? .12 : 0))); }
+  return s.rim(.86);
+}
+const LEMON = [0x2a5a2c, 0x3b7a36, 0x55984a, 0x79b85a];
+tree('limone', 'Albero di limoni', { W: 28, ch: 26, th: 8, pal: LEMON, bark: [0x6a4a32, 0x4a3424], fruit: true, seed: 3, tw: 2 });
+tree('limone_vaso', 'Limone in vaso', { W: 16, ch: 14, th: 4, pal: LEMON, bark: [0x6a4a32, 0x4a3424], fruit: true, seed: 8, pot: true });
+tree('pino', 'Pino marittimo', { W: 54, ch: 18, th: 34, flat: 1.5, pal: [0x24482a, 0x34603a, 0x4a7a48, 0x6a9a5a], bark: [0x7a4e34, 0x5a3624], seed: 15, lean: 5, tw: 3 });
+
+/* agave: foglie sottili, due sagome incrociate */
+(function agave() {
+  const s = new Pix('agave', 22, 16, 'Agave', { cross: true, px: 11 });
+  for (const [ang, len] of [[-1.35, 11], [-.95, 13], [-.5, 15], [-.15, 14], [.2, 15], [.6, 13], [1.0, 12], [1.4, 10]]) {
+    for (let t = 0; t < len; t++) { const x = Math.round(11 + Math.sin(ang) * t * .78), y = Math.round(15 - Math.cos(ang) * t), wd = t < len * .5 ? 2 : 1; for (let k = 0; k < wd; k++) s.set(x + k, y, t > len - 3 ? 0xb8b46a : k ? 0x557e70 : 0x6e9e8a, 1, -1); }
+  }
+})();
+
+/* gozzo: lo scafo è largo in alto e si stringe verso la chiglia; dentro, le assi vengono da un ritaglio */
+function gozzo(key, name, band, band2) {
+  const L = 46, H = 18, s = new Pix(key, L, H, name, { tex: 'tex_wood' });
+  for (let x = 0; x < L; x++) {
+    const u = Math.abs((x + .5) / L * 2 - 1);
+    const top = Math.round(5 - 4 * Math.pow(u, 2.2)) - (x >= L - 2 ? 3 : x <= 1 ? 2 : 0), bot = Math.round(17 - 9 * Math.pow(u, 2.4));
+    const B = 8.5 * Math.sqrt(Math.max(0, 1 - Math.pow(u, 2.6)));
+    for (let y = Math.max(0, top); y <= bot; y++) {
+      const t = (y - top) / Math.max(1, bot - top), hw = Math.max(1, Math.round(B * (1 - .55 * t * t)));
+      let c = y === top ? 0x7a4a2a : y <= top + 2 ? (y === top + 2 ? band2 : band) : y >= bot - 2 ? 0x8f3426 : ((y - top) % 3 === 0 ? 0xdcd6c6 : 0xf0ece0);
+      if (y > top && Math.abs(x - (L - 8)) < 1 && y === top + 4) c = 0x2a2a30;
+      s.set(x, y, jit(c, x, y, 8, .05), hw, -hw, F_TEXTOP);
+    }
+  }
+  return s.rim(.88);
+}
+gozzo('gozzo_b', 'Gozzo azzurro', 0x2e6fae, 0xf0ece0);
+gozzo('gozzo_r', 'Gozzo rosso', 0xb8342c, 0x2e6fae);
+gozzo('gozzo_v', 'Gozzo verde', 0x2f7a5a, 0xf2c94a);
+
+/* reti stese sulla rastrelliera: un telo inclinato, ogni riga un pixel più avanti di quella sopra; le maglie sono buchi veri */
+function reti(key, name, net) {
+  const W = 50, H = 30, s = new Pix(key, W, H, name);
+  for (const px of [0, W - 2]) s.rect(px, 1, 2, H - 1, (x) => x === px ? 0x8a6a48 : 0x6a4e34, 1, -1);
+  s.rect(0, 1, W, 2, (x, y) => y === 1 ? 0x9a7a52 : 0x6a4e34, 1, -1);
+  for (let x = 2; x < W - 2; x++) {
+    const bot = 22 + Math.round(2.2 * Math.abs(Math.sin((x - 2) * Math.PI / 15)));
+    for (let y = 3; y <= bot; y++) {
+      const k = y - 3, edge = y === 3 || y === bot;
+      if (!edge && (x % 3) && ((y + (x > 25 ? 1 : 0)) % 3)) continue;   // maglie
+      const c = y === 3 ? (x % 5 === 0 ? 0xf0c04a : shade(net, .8)) : y === bot ? 0x55555c : jit(net, x, y, 9, .18);
+      s.set(x, y, c, 1 + k, k - 2);
+    }
+  }
+  return s;
+}
+reti('reti_r', 'Reti rosse', 0xd0583a);
+reti('reti_v', 'Reti verdi', 0x3f8a68);
+
+/* ancora: ferro e ruggine, su un basamento di pietra */
+(function ancora() {
+  const s = new Pix('ancora', 26, 34, 'Ancora'), iron = (x, y) => jit(hash2(x * 5, y * 3) < .28 ? 0x8a4a2a : 0x433e40, x, y, 7, .15);
+  for (let y = 0; y < 6; y++) for (let x = 9; x < 17; x++) { const d = Math.hypot(x + .5 - 13, y + .5 - 3); if (d > 1.3 && d < 2.9) s.set(x, y, iron(x, y), 1, -1); }
+  s.rect(12, 5, 2, 24, iron, 2, -2);
+  s.rect(4, 8, 18, 2, (x, y) => y === 8 ? 0x5e5654 : 0x3a3638, 2, -2); s.rect(2, 7, 2, 4, iron, 2, -2); s.rect(22, 7, 2, 4, iron, 2, -2);
+  for (let y = 17; y < 30; y++) for (let x = 2; x < 24; x++) { const d = Math.hypot(x + .5 - 13, y + .5 - 17); if (d >= 9 && d < 11.2 && y > 19) s.set(x, y, iron(x, y), 2, -2); }
+  for (let y = 14; y < 21; y++) { const hw = Math.min(3, (y - 14) >> 1); for (let x = 4 - hw; x <= 4 + hw; x++) s.set(x, y, iron(x, y), 2, -2); for (let x = 21 - hw; x <= 21 + hw; x++) s.set(x, y, iron(x, y), 2, -2); }
+  s.rect(4, 30, 18, 4, (x, y) => y === 30 ? 0xc8beac : jit(0xa49a88, x, y, 3, .1), 7, -7);
+  s.rim(.85);
+})();
+
+/* lampione da molo: palo di ghisa e lanterna quadrata accesa */
+(function lampione() {
+  const s = new Pix('lampione', 10, 40, 'Lampione');
+  [2, 4, 6, 8].forEach((w, k) => s.sq(k, w, () => k === 0 ? 0x4a4e56 : IRON, F_WRAP));
+  for (let y = 4; y < 11; y++) s.sq(y, 8, (lx) => y === 4 || y === 10 || lx === 0 || lx === 7 ? IRON : (lx === 3 || lx === 4) && y === 7 ? 0xc89040 : y === 5 ? 0xfff2c0 : 0xffd98a, (lx) => F_WRAP | (y > 4 && y < 10 && lx > 0 && lx < 7 && !((lx === 3 || lx === 4) && y === 7) ? F_GLOW : 0));
+  s.sq(11, 6, () => IRON, F_WRAP); s.sq(12, 4, () => IRON, F_WRAP);
+  for (let y = 13; y < 35; y++) s.sq(y, y === 20 || y === 30 ? 4 : 2, (lx) => lx === 0 ? 0x4a4e56 : IRON, F_WRAP);
+  for (let y = 35; y < 40; y++) s.sq(y, y === 35 ? 4 : 6, (lx) => lx === 0 ? 0x4a4e56 : IRON, F_WRAP);
+})();
+
+/* bitta, botte, cassette di pesce, vaso di gerani, palo del pontile */
+(function smalls() {
+  const b = new Pix('bitta', 8, 9, 'Bitta');
+  for (let y = 0; y < 9; y++) { const hw = y < 2 ? 4 : y < 7 ? 2 : 3; b.round(y, 4 - hw, 3 + hw, (x, yy, u) => jit(hash2(x, yy * 3) < .3 ? 0x7a4228 : u < -.3 ? 0x50545c : 0x34363c, x, yy, 2, .1)); }
+  const t = new Pix('botte', 12, 14, 'Botte');
+  for (let y = 0; y < 14; y++) { const hw = 5 + (y > 2 && y < 11 ? 1 : 0); t.round(y, 6 - hw, 5 + hw, (x, yy, u) => yy === 2 || yy === 11 ? 0x3a3a40 : yy === 0 ? 0xa07a4a : shade(x % 3 === 0 ? 0x7a4e2c : 0x8e5c34, u < -.3 ? 1.12 : u > .4 ? .82 : 1)); }
+  const c = new Pix('cassette', 22, 12, 'Cassette di pesce', { tex: 'tex_fish' });
+  c.rect(0, 6, 22, 6, (x, y) => y === 6 || x === 0 || x === 21 ? 0xb08a58 : y === 8 ? (x % 4 === 1 ? 0x2a3440 : 0xc6d0d6) : y % 2 ? 0x9a744a : 0xa8824f, 7, -7, F_TEXTOP);
+  c.rect(2, 0, 18, 6, (x, y) => y === 0 ? 0xb08a58 : y === 2 ? (x % 5 === 2 ? 0x6f8ea8 : 0xd0d8de) : y % 2 ? 0x9a744a : 0xa8824f, 6, -6, F_TEXTOP);
+  const v = new Pix('vaso', 10, 11, 'Vaso di gerani');
+  for (let y = 0; y < 5; y++) { const hw = [3, 4, 5, 5, 4][y]; v.round(y, 5 - hw, 4 + hw, (x, yy) => hash2(x * 7, yy * 5) < .45 ? (hash2(x, yy) < .5 ? 0xe03a4a : 0xf06a7a) : 0x3f8a3e); }
+  for (let y = 5; y < 11; y++) { const hw = y === 5 ? 4 : 3; v.round(y, 5 - hw, 4 + hw, (x, yy, u) => yy === 5 ? 0xd27c52 : u < -.3 ? 0xc8704a : 0xa85434); }
+  v.rim(.88);
+  const p = new Pix('palo', 4, 20, 'Palo del pontile');
+  for (let y = 0; y < 20; y++) p.round(y, 0, 3, (x, yy, u) => yy === 0 ? 0x9a7a52 : yy > 13 ? 0x3a3024 : u < 0 ? 0x7a5a3a : 0x5a4028);
+})();
+
+/* banco del pesce: tendone a righe come telo inclinato, pali davanti e dietro, cassette sul bancone */
+(function banco() {
+  const W = 44, H = 36, s = new Pix('banco', W, H, 'Banco del pesce');
+  for (let k = 0; k < 8; k++) for (let x = 0; x < W; x++) s.set(x, k, jit(((x >> 2) & 1) ? 0xf2ece0 : 0x2e62a8, x, k, 2, .05), -9 + 3 * k, -12 + 3 * k);
+  for (let x = 0; x < W; x++) if (!(x % 4 === 3)) s.set(x, 8, ((x >> 2) & 1) ? 0xd8d2c4 : 0x24508a, 12, 11);
+  for (let y = 8; y < H; y++) { for (const x of [1, 2, W - 3, W - 2]) s.set(x, y, x === 1 || x === W - 3 ? 0x8a6a48 : 0x6a4e34, 12, 10); for (const x of [3, 4, W - 5, W - 4]) s.set(x, y, 0x5a4230, -10, -12); }
+  for (let y = 20; y < 24; y++) for (let x = 6; x < W - 6; x++) { const crate = ((x - 6) % 11 === 0) || y === 23; s.set(x, y, crate ? 0x9a744a : y === 20 ? 0xe6eef2 : ((x + y) % 4 === 0 ? 0x2a3440 : (x * 7 + y) % 5 < 2 ? 0x6f8ea8 : x > 26 && x < 32 ? 0xd85a4a : 0xc6d0d6), 8, -6); }
+  for (let y = 24; y < H; y++) for (let x = 5; x < W - 5; x++) s.set(x, y, y === 24 ? 0xb08a58 : (x % 6 === 0 ? 0x7a5634 : jit(0x9a6e44, x, y, 3, .08)), 9, -7);
+  for (let x = 10; x < 34; x++) s.set(x, 28, 0xf0e6d0, 9, -7);   // cartello
+  for (const x of [13, 14, 17, 20, 21, 24, 27, 28, 31]) s.set(x, 28, 0x2e62a8, 9, -7);
+})();
+
+/* scogli: gonfiati dal bordo verso il centro, a passi di due pixel */
+function scoglio(key, w, h, seed) {
+  const s = new Pix(key, w, h, 'Scoglio', { tex: 'tex_rock' }), on = new Uint8Array(w * h), dist = new Int16Array(w * h).fill(-1), q = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const dx = (x + .5 - w / 2) / (w / 2), dy = (y + .5 - h) / h; if (dx * dx + dy * dy * 1.05 < 1 - .3 * vnoise(x / 3 + seed, y / 3)) on[y * w + x] = 1; }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (!on[i]) continue; if (x === 0 || y === 0 || x === w - 1 || !on[i - 1] || !on[i + 1] || !on[i - w]) { dist[i] = 0; q.push(i); } }
+  for (let k = 0; k < q.length; k++) { const i = q[k], x = i % w, y = (i / w) | 0; for (const [a, b] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) { if (a < 0 || b < 0 || a >= w || b >= h) continue; const j = b * w + a; if (!on[j] || dist[j] >= 0) continue; dist[j] = dist[i] + 1; q.push(j); } }
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!on[i]) continue; const d = Math.max(0, dist[i]), z = Math.min(12, 2 + 2 * Math.floor(d / 1.4));
+    const l = -(x + .5 - w / 2) / w * .8 - (y / h) * .6 + (hash2(x * 3 + seed, y * 5) - .5) * .4;
+    s.set(x, y, y > h - 3 ? 0x4e4b46 : l > .15 ? 0xaaa59a : l > -.25 ? 0x8f8a82 : 0x6e6a63, z, -z, F_TEXTOP);
+  }
+  return s.rim(.85);
+}
+scoglio('scoglio_a', 34, 16, 4); scoglio('scoglio_b', 24, 12, 9);
+
+/* ---------- atlante: i disegni impilati su un foglio, con i tre piani di profondità e regole ---------- */
+const AP = (function packArt() {
+  const W_ = 256, items = ART.slice().sort((a, b) => b.h - a.h || b.w - a.w); let x = 1, y = 1, rowH = 0;
+  for (const s of items) { if (x + s.w + 1 > W_) { x = 1; y += rowH + 1; rowH = 0; } s.ax = x; s.ay = y; x += s.w + 1; rowH = Math.max(rowH, s.h); }
+  const H_ = y + rowH + 1, px = new Uint8ClampedArray(W_ * H_ * 4), zf = new Uint8Array(W_ * H_), zb = new Uint8Array(W_ * H_), fl = new Uint8Array(W_ * H_), sprites = {};
+  for (const s of ART) {
+    for (let j = 0; j < s.h; j++) for (let i = 0; i < s.w; i++) { const k = j * s.w + i, c = s.c[k]; if (c < 0) continue; const q = (s.ay + j) * W_ + s.ax + i; px[q * 4] = c >> 16 & 255; px[q * 4 + 1] = c >> 8 & 255; px[q * 4 + 2] = c & 255; px[q * 4 + 3] = 255; zf[q] = s.zf[k] + 64; zb[q] = s.zb[k] + 64; fl[q] = s.f[k]; }
+    sprites[s.key] = Object.assign({ name: s.name, r: [s.ax, s.ay, s.w, s.h] }, s.meta);
+  }
+  return { w: W_, h: H_, px, zf, zb, fl, sprites };
+})();
+const AW = AP.w, AH = AP.h, propsPx = AP.px, zfPl = AP.zf, zbPl = AP.zb, flPl = AP.fl;
+
+/* ---------- figurine: 12 × 20, una riga per personaggio; davanti, dietro, lato, due passi davanti, due passi dietro, un passo di lato ---------- */
+const AC = (function chars() {
+  const FH = ['...hhhhhh...', '..hhhhhhhh..', '.hhhhhhhhhh.', '.hhhhhhhhhh.', '.hhssssssHh.', '.hsessssesh.', '.hsessssesh.', '..ssssssSS..', '....ssSS....'];
+  const BH = ['...hhhhhh...', '..hhhhhhhh..', '.hhhhhhhhhh.', '.hhhhhhhhhh.', '.hhhhhhhhHh.', '.hhhhhhhHHh.', '.hhhhhhhHHh.', '..hhhhhHHH..', '....ssSS....'];
+  const SH = ['...hhhhhh...', '..hhhhhhhh..', '.hhhhhhhhhh.', '.hhhhhhhhhh.', '.hhhhhsssss.', '.hhhhssses..', '.Hhhhssses..', '..HHsssssS..', '....sssS....'];
+  const BF = ['..cccccccc..', '.ccccccccCC.', '.ccccccccCC.', '.sccccccCCs.', '.sccccccCCs.', '..ppppppPP..', '..ppppppPP..'];
+  const SB = ['...cccccc...', '...ccccccC..', '...ccsccCC..', '...ccsccCC..', '...ccsccCC..', '...ppppPP...', '...ppppPP...'];
+  const L0 = ['..ppp..pPP..', '..ppp..pPP..', '..bbb..bbb..', '..bbb..bbb..'], L1 = ['..ppp..pPP..', '..bbb..pPP..', '..bbb..bbb..', '.......bbb..'], L2 = ['..ppp..pPP..', '..ppp..bbb..', '..bbb..bbb..', '..bbb.......'];
+  const SL0 = ['...pppPP....', '...pppPP....', '...bbbbb....', '...bbbbbb...'], SL1 = ['..pppppPP...', '..ppp.pPP...', '.bbb...bbb..', '.bb....bbbb.'];
+  const BFR = ['..cccccccc..', '.ccccccccCC.', '.cccccccccC.', '.soooooooOs.', '.sccccccCCs.', '..ccccccCC..', '..ccccccCC..'], BBR = BFR;
+  const SBR = ['...cccccc...', '...ccccccC..', '...ccsccCC..', '...ooooooO..', '...ccsccCC..', '...ccccCC...', '...ccccCC...'];
+  const LR = ['..ccccccCC..', '..ccccccCC..', '..cccccCCC..', '...bb..bb...'], LR1 = ['..ccccccCC..', '..ccccccCC..', '..cccccCCC..', '...bb...bb..'], LR2 = ['..ccccccCC..', '..ccccccCC..', '..cccccCCC..', '..bb...bb...'];
+  const SLR = ['...ccccCC...', '...ccccCC...', '...cccccC...', '....bbbb....'], SLR1 = ['...ccccCC...', '...ccccCC...', '..ccccccC...', '..bb..bbb...'];
+  const APRON = ['..cccccccc..', '.ccciiiiccC.', '.cciiiiiicC.', '.soooooooOs.', '.sciiiiiiCs.', '..ciiiiiiC..', '..ciiiiiiC..'], LAP = ['..ciiiiiiC..', '..ciiiiiiC..', '..cccccCCC..', '...bb..bb...'];
+  const COAT = ['..cccccccc..', '.cccccyccCC.', '.ccccccccCC.', '.scccccyCCs.', '.sccccccCCs.', '..ccccycCC..', '..ccccccCC..'];
+  const CAP = ['...rrrrrr...', '..rrrrrrrr..', '.rrrrrrrrrR.', '.RRRRRRRRRR.'], PEAK = ['...kkkkkk...', '..kkkkkkkk..', '.kkkkyykkkk.', 'kkkkkkkkkkkk'];
+  const BEARD_F = ['..gggggggg..', '...gggggg...'], CAT = ['.a..a.....', '.aaaa.....', '.eaea....a', '.aaaa....a', '..aaaaaa.a', '..aAaAaAaa', '..aaaaaaa.', '..aaaaaaa.', '..a.a.a.a.', '..w.w.w.w.'];
+  const ROWS = [
+    { pal: { h: 0x4a3222, s: 0xf0c49a, c: 0x2c3e6e, p: 0x5a4632, b: 0x2a2233 }, stripes: true },                                    // tu
+    { pal: { h: 0xb8b4ac, s: 0xd09a70, c: 0xe0b83a, p: 0x4a4a52, b: 0x2a2a30, r: 0xb83a32, g: 0xd0ccc4 }, cap: CAP, beard: true },   // pescatore
+    { pal: { h: 0x2a1e1a, s: 0xecc09a, c: 0x3a6aa8, i: 0xf2eee4, o: 0xd8d0c0, b: 0x2a2233 }, apron: true },                         // pescivendola
+    { pal: { h: 0x8a4a22, s: 0xf4cfa8, c: 0xc83a3a, o: 0xf4ecdc, b: 0x3a2a2a }, robe: true, tails: true },                            // bambina
+    { pal: { h: 0xe0dcd4, s: 0xe2b08a, c: 0x2c3a5c, p: 0x24304a, b: 0x1e1e24, k: 0x1e2a44, y: 0xe0b84a, g: 0xece8e0 }, cap: PEAK, beard: true, coat: true },   // guardiano del faro
+  ];
+  const CW_ = 12, CH_ = 20, NR = ROWS.length + 1, w = 1 + 8 * (CW_ + 1), h = 1 + NR * (CH_ + 1), out = new Uint8ClampedArray(w * h * 4);
+  const plot = (rows, pal, col, row, ox, oy) => rows.forEach((line, y) => { for (let x = 0; x < line.length; x++) { const ch = line[x]; if (ch === '.') continue; let c = pal[ch]; if (c === undefined) { const lo = pal[ch.toLowerCase()]; c = lo === undefined ? 0xff00ff : shade(lo, .8); } const q = ((1 + row * (CH_ + 1) + oy + y) * w + 1 + col * (CW_ + 1) + ox + x) * 4; out[q] = c >> 16 & 255; out[q + 1] = c >> 8 & 255; out[q + 2] = c & 255; out[q + 3] = 255; } });
+  ROWS.forEach((R_, row) => {
+    const pal = Object.assign({ e: 0x2a2233, w: 0xf5efe0, o: 0x2a2233 }, R_.pal);
+    const head = (H_, front) => { let a = H_.slice(); if (R_.cap) a = R_.cap.concat(a.slice(R_.cap.length)); if (R_.beard && front) a = a.slice(0, 7).concat(BEARD_F); if (R_.tails && front) a = a.map((l, i) => i >= 4 && i <= 6 ? 'h' + l.slice(1, 11) + 'H' : l); return a; };
+    const stripe = (B) => R_.stripes ? B.map((l, i) => i === 1 || i === 3 ? l.replace(/c/g, 'w').replace(/C/g, 'W') : l) : B;
+    const bodyF = stripe(R_.apron ? APRON : R_.robe ? BFR : R_.coat ? COAT : BF), bodyB = stripe(R_.robe || R_.apron ? BBR : BF), bodyS = stripe(R_.robe || R_.apron ? SBR : SB);
+    const long = R_.robe || R_.apron, lf = R_.apron ? [LAP, LAP, LAP] : long ? [LR, LR1, LR2] : [L0, L1, L2], ls = long ? [SLR, SLR1] : [SL0, SL1];
+    const frames = [head(FH, true).concat(bodyF, lf[0]), head(BH).concat(bodyB, R_.apron ? LR : lf[0]), head(SH).concat(bodyS, ls[0]), head(FH, true).concat(bodyF, lf[1]), head(FH, true).concat(bodyF, lf[2]), head(BH).concat(bodyB, long ? LR1 : L1), head(BH).concat(bodyB, long ? LR2 : L2), head(SH).concat(bodyS, ls[1])];
+    frames.forEach((f, col) => plot(f, pal, col, row, 0, 0));
+  });
+  for (let col = 0; col < 8; col++) plot(CAT, { a: 0x9a9aa4, e: 0x2a2233, w: 0xf5efe0 }, col, ROWS.length, 1, 10);   // il gatto: di lato in ogni riquadro
+  return { w, h, cw: CW_, ch: CH_, px: out };
+})();
+const charsPx = AC.px, CW = AC.cw, CH = AC.ch;
+
+/* ---------- mattonelle del terreno, dipinte dal codice e ripetibili senza giunte (tutto è periodico su 32 pixel) ---------- */
+const AT = (function tiles() {
+  const T = 32, N = 6, w = T * N, out = new Uint8ClampedArray(w * T * 4), hp = (x, y, k) => hash2(((x % T) + T) % T + k * 101, ((y % T) + T) % T + k * 57);
+  const put_ = (k, x, y, c) => { const q = (y * w + k * T + x) * 4; out[q] = c >> 16 & 255; out[q + 1] = c >> 8 & 255; out[q + 2] = c & 255; out[q + 3] = 255; };
+  // lastre di pietra: file di altezza diversa, lunghezze sfalsate
+  const rowsP = [0, 7, 15, 24, 32], cutsP = [[0, 11, 22], [5, 18, 27], [2, 13, 25], [8, 20, 30]];
+  for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+    const r = rowsP.findIndex((v, i) => y >= v && y < rowsP[i + 1]), cs = cutsP[r], slab = cs.filter((v) => x >= v).length + r * 4;
+    const joint = rowsP.includes(y) || cs.includes(x);
+    put_(0, x, y, joint ? 0x857a6a : jit(shade(0xb9ae9a, .9 + hash2(slab, 3) * .18), x, y, 1, .08));
+  }
+  // mattoni a spina di pesce
+  for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+    const u = (x + y) & 31, v = (x - y + 64) & 31, horiz = ((u >> 2) + (v >> 3)) & 1, a = horiz ? x : y, b = horiz ? y : x;
+    const joint = (horiz ? (y % 4 === 3) : (x % 4 === 3)) || ((a + (Math.floor(b / 4) % 2) * 4) % 8 === 7);
+    put_(1, x, y, joint ? 0xc4b294 : jit(hp(x >> 2, y >> 2, 2) < .5 ? 0xae6244 : 0x9e553a, x, y, 2, .1));
+  }
+  // ciottoli: sassi tondi, chiari e scuri, che si toccano anche oltre il bordo
+  const peb = []; { const R1 = rng(55); for (let k = 0; k < 46; k++) peb.push([R1() * T, R1() * T, 1.6 + R1() * 2.2, [0xc8c2b4, 0xa8a090, 0x8e887c, 0xd8d0c0, 0x9a8a78][Math.floor(R1() * 5)]]); }
+  for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) {
+    let best = null, bd = 9;
+    for (const [px_, py_, r, c] of peb) { let dx = Math.abs(x + .5 - px_), dy = Math.abs(y + .5 - py_); dx = Math.min(dx, T - dx); dy = Math.min(dy, T - dy); const d = Math.hypot(dx, dy) / r; if (d < bd) { bd = d; best = [c, (x + .5 - px_), (y + .5 - py_)]; } }
+    put_(2, x, y, bd < 1 ? shade(best[0], bd > .7 && best[1] + best[2] > 0 ? .8 : bd < .45 && best[1] + best[2] < 0 ? 1.1 : 1) : 0x6e665a);
+  }
+  // acqua (anteprima; quella vera si ridipinge da sola)
+  for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) put_(3, x, y, Math.sin((x + y * 2) * Math.PI / 16) > .8 ? 0x8fd0d0 : 0x2a8aa0);
+  // terra dei terrazzamenti, con l'erba
+  for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const g = hp(x, y, 4), tuft = hp(x >> 1, y >> 1, 5) < .35; put_(4, x, y, tuft ? (g < .5 ? 0x5e8a3a : 0x4a7a32) : g < .1 ? 0x6a5236 : jit(0x8a6e48, x, y, 4, .12)); }
+  // assi del pontile, con i chiodi
+  for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const bx = x % 8, end = (y + (x >> 3) * 11) % 32 === 0; put_(5, x, y, bx === 7 || end ? 0x3e2c1e : (bx === 1 || bx === 5) && (y + (x >> 3) * 11) % 32 === 2 ? 0x2a2a2a : jit(hp(x >> 3, 0, 6) < .5 ? 0x9a7650 : 0x8a6644, x, y, 6, .1)); }
+  return { w, h: T, tw: T, th: T, px: out };
+})();
+const tilesPx = AT.px, TW = AT.tw, TH = AT.th;
+// atlante a due metà: a sinistra i colori del foglio, a destra gli stessi senza contorno scuro (per i fianchi); accanto, la tabella degli strati
+const AW2 = AW * 2, atlasPx = new Uint8Array(AW2 * AH * 4), auxPx = new Uint8Array(AW2 * AH * 4);   // tabella: strato davanti, strato dietro, bagliore
+const ROOF_F = [0, Math.SQRT1_2, Math.SQRT1_2], ROOF_B = [0, Math.SQRT1_2, -Math.SQRT1_2], TILE_N = 5;
+
+/* ---------- sprite 2D: un ritaglio del foglio, con due profondità per pixel (davanti e dietro) già disegnate insieme ai colori ---------- */
+const SPRITES = [], sp = {};
+class Spr {
+  constructor(key) {
+    const meta = AP.sprites[key], [ax, ay, w, h] = meta.r, n = w * h;
+    Object.assign(this, { key, name: meta.name, ax, ay, w, h, base: h, px: meta.px === undefined ? Math.round(w / 2) : meta.px, count: 0, texKey: meta.tex, gable: meta.gable, cross: !!meta.cross, tileN: meta.tex ? 16 : TILE_N, grow: meta.grow, gcol: meta.gcol });
+    this.data = new Uint8ClampedArray(n * 4); this.glow = new Uint8Array(n); this.fl = new Uint8Array(n);
+    this.zf = new Int8Array(n); this.zb = new Int8Array(n); this.cls = new Uint8Array(n);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, q = (ay + y) * AW + ax + x, k = q * 4; if (propsPx[k + 3] < 128) continue;
+      this.data[i * 4] = propsPx[k]; this.data[i * 4 + 1] = propsPx[k + 1]; this.data[i * 4 + 2] = propsPx[k + 2]; this.data[i * 4 + 3] = 255;
+      const f = flPl[q]; this.fl[i] = f; this.cls[i] = f & F_ROOF; this.glow[i] = f & F_GLOW ? 1 : 0; this.zf[i] = zfPl[q] - 64; this.zb[i] = zbPl[q] - 64; this.count++;
+    }
+    SPRITES.push(this); sp[key] = this; this.finish();
+  }
+  on(x, y) { return x >= 0 && y >= 0 && x < this.w && y < this.h && this.data[(y * this.w + x) * 4 + 3] > 0; }
+  each(fn) { const w = this.w, d = this.data; for (let y = 0; y < this.h; y++) for (let x = 0; x < w; x++) { const i = y * w + x; if (d[i * 4 + 3]) fn(x, y, i); } }
+  finish() {
+    const w = this.w, h = this.h, n = w * h, d = this.data;
+    // colore dei fianchi: quello del pixel, ma il contorno scuro prende il colore del vicino più prossimo
+    const sc = this.sc = new Uint8Array(n * 3), dist = new Int8Array(n).fill(-1), q = [];
+    this.each((x, y, i) => { sc[i * 3] = d[i * 4]; sc[i * 3 + 1] = d[i * 4 + 1]; sc[i * 3 + 2] = d[i * 4 + 2]; if (d[i * 4] * .3 + d[i * 4 + 1] * .59 + d[i * 4 + 2] * .11 >= 42) { dist[i] = 0; q.push(i); } });
+    for (let k = 0; k < q.length; k++) { const i = q[k], x = i % w, y = (i / w) | 0; if (dist[i] >= 3) continue; for (const [a, b] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) { if (!this.on(a, b)) continue; const j = b * w + a; if (dist[j] >= 0) continue; dist[j] = dist[i] + 1; sc[j * 3] = sc[i * 3]; sc[j * 3 + 1] = sc[i * 3 + 1]; sc[j * 3 + 2] = sc[i * 3 + 2]; q.push(j); } }
+    // tabella degli strati e colori, scritti nell'atlante; i pixel vuoti prendono il colore del vicino, così un fianco non resta mai bucato
+    const cf = new Uint8Array(n), cb = new Uint8Array(n), near = new Int32Array(n).fill(-1), fq = [];
+    this.each((x, y, i) => { if (this.zf[i] <= this.zb[i]) this.zf[i] = this.zb[i] + 1; cf[i] = this.zf[i] + 64 + this.cls[i] * 128; cb[i] = this.zb[i] + 64 + this.cls[i] * 128; near[i] = i; fq.push(i); });
+    for (let k = 0; k < fq.length; k++) { const i = fq[k], x = i % w, y = (i / w) | 0; for (const [a, b] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]]) { if (a < 0 || b < 0 || a >= w || b >= h) continue; const j = b * w + a; if (near[j] >= 0) continue; near[j] = near[i]; fq.push(j); } }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x, j = near[i], on = j === i, kl = ((this.ay + y) * AW2 + this.ax + x) * 4, kr = kl + AW * 4;
+      atlasPx[kl] = d[j * 4]; atlasPx[kl + 1] = d[j * 4 + 1]; atlasPx[kl + 2] = d[j * 4 + 2]; atlasPx[kl + 3] = 255;
+      atlasPx[kr] = sc[j * 3]; atlasPx[kr + 1] = sc[j * 3 + 1]; atlasPx[kr + 2] = sc[j * 3 + 2]; atlasPx[kr + 3] = 255;
+      if (on) { auxPx[kl] = cf[i]; auxPx[kl + 1] = cb[i]; auxPx[kl + 2] = auxPx[kr + 2] = this.glow[i] ? 255 : 0; }
+    }
+    this.layF = this.layers(cf); this.layB = this.layers(cb);
+    this.sides();
+    return this;
+  }
+  // pixel con la stessa profondità = uno strato; ogni strato si copre con rettangoli di 16 pixel al massimo
+  layers(codes) {
+    const m = new Map();
+    this.each((x, y, i) => { const key = codes[i] * 64 + (y >> 4); let L = m.get(key); if (!L) m.set(key, L = { code: codes[i], y0: y, y1: y, cells: new Set() }); if (y < L.y0) L.y0 = y; if (y > L.y1) L.y1 = y; L.cells.add(x >> 4); });
+    const out = []; for (const L of m.values()) for (const c of L.cells) out.push([L.code, c * 16, L.y0, Math.min(this.w, c * 16 + 16), L.y1 + 1]);
+    return out;
+  }
+  /* Fianchi. Ogni pixel espone una faccia dove il vicino manca o è meno profondo. Le facce in fila sulla stessa retta si fondono in strisce
+     che leggono il colore dall'atlante: il pixel stesso (facce strette), la facciata che gira l'angolo (muri), o poche righe ripetute (tetti). */
+  sides() {
+    const s = this, w = s.w, h = s.h, base = s.base, px = s.px, N = s.tileN, patch = s.texKey ? sp[s.texKey] : null, open = new Map(), segs = [];
+    const add = (dir, line, pos, d0, d1, tA, tB, half, sn, row) => {
+      if (row !== undefined) { segs.push({ dir, line, p0: pos, p1: pos + 1, d0, d1, tA, tB, half, sn, row }); return; }   // ritaglio di tetto o di telo: non si fonde con i vicini
+      const key = dir + '|' + line + '|' + d0 + '|' + d1 + '|' + tA + '|' + tB + '|' + half + '|' + (sn ? sn.join() : ''), g = open.get(key);
+      if (g && g.p1 === pos && pos - g.p0 < 16) g.p1 = pos + 1; else { const o = { dir, line, p0: pos, p1: pos + 1, d0, d1, tA, tB, half, sn }; open.set(key, o); segs.push(o); }
+    };
+    s.each((x, y, i) => {
+      const zf = s.zf[i], zb = s.zb[i], f = s.fl[i];
+      for (let k = 0; k < 4; k++) {
+        const nx = k === 0 ? -1 : k === 1 ? 1 : 0, ny = k === 2 ? 1 : k === 3 ? -1 : 0, X = x + nx, Y = y - ny;
+        if (ny < 0 && Y >= base) continue;                      // la base poggia a terra
+        const sn = (f & F_TEXALL) && s.gable !== undefined ? [x + .5 < s.gable ? -.6 : .6, .8, 0] : null, ov = sn && nx * sn[0] + ny * sn[1] > 0 ? sn : null, roof = ny > 0 && (f & F_ROOF);
+        const line = nx ? x : y, pos = nx ? y : x, size = nx ? w : h, g = (nx < 0 || ny > 0) ? 1 : -1;   // g: verso in cui si entra nello sprite
+        const flat = (a, b, o) => add(k, line, pos, a, b, line + .5, line + .5, 1, o);
+        const run = (a, b) => {
+          if (b <= a) return;
+          if (roof) { if (a >= 0) flat(a, b, ROOF_F); else if (b <= 0) flat(a, b, ROOF_B); else { flat(0, b, ROOF_F); flat(a, 0, ROOF_B); } return; }
+          // il timpano di una casa (il fianco delle righe del tetto) prende il colore del muro, non quello dell'ardesia
+          if (nx !== 0 && (f & F_ROOF) && s.grow !== undefined) { add(k, line, pos, a, b, s.ax + s.gcol, s.ax + s.gcol + 1, 1, ov, s.ay + s.grow); return; }
+          const wrap = nx !== 0 && (f & F_WRAP) !== 0;
+          if (b - a < 6) { flat(a, b, ov); return; }
+          // tetti piani e teli: il colore viene da un ritaglio a parte dell'atlante, ripetuto lungo la profondità
+          const tex = patch && ((ny > 0 && (f & F_TEXTOP)) || (ny >= 0 && (f & F_TEXALL))) ? [patch.ax - 1, patch.ay + ((ny > 0 ? x : y) % patch.h)] : null;
+          const dB = Math.floor((zf - 1 + zb) / 2) + 1;           // fin qui è più vicina la faccia dietro, poi quella davanti
+          const piece = (d0, d1, back) => {
+            if (d1 <= d0) return; let T;
+            if (wrap && !tex) T = (dd) => { const t = back ? dd - zb : zf - dd; return g > 0 ? line + t : line + 1 - t; };
+            else { const kk = back ? Math.floor((d0 - zb) / N) : Math.floor((zf - d0 - 1) / N), l = tex ? tex[0] : line, gg = tex ? 1 : g; T = (dd) => { const t = (back ? dd - zb : zf - dd) - kk * N; return gg > 0 ? l + 1 + t : l - t; }; }
+            const tA = T(d0), tB = T(d1);
+            if (tex) add(k, line, pos, d0, d1, tA, tB, 1, ov, tex[1]); else if (Math.min(tA, tB) < 0 || Math.max(tA, tB) > size) flat(d0, d1, ov); else add(k, line, pos, d0, d1, tA, tB, wrap ? 0 : 1, ov);
+          };
+          const cut = (d0, d1, back) => {
+            const wr = wrap && !tex; let c = d0;
+            while (c < d1) { let nxt; if (wr) nxt = c + 16; else if (back) nxt = zb + (Math.floor((c - zb) / N) + 1) * N; else { const m = zf - c; nxt = zf - Math.floor((m - 1) / N) * N; } nxt = Math.min(nxt, d1); piece(c, nxt, back); c = nxt; }
+          };
+          cut(a, Math.min(b, dB), true); cut(Math.max(a, dB), b, false);
+        };
+        if (!s.on(X, Y)) run(zb, zf);
+        else { const j = Y * w + X, zfn = s.zf[j], zbn = s.zb[j]; if (zfn < zf) run(Math.max(zfn, zb), zf); if (zbn > zb) run(zb, Math.min(zbn, zf)); }
+      }
+    });
+    // strisce in coordinate dello sprite: quattro angoli, normale, coordinate nell'atlante
+    const NRM = [[-1, 0, 0], [1, 0, 0], [0, 1, 0], [0, -1, 0]];
+    s.strips = segs.map((q) => {
+      const fix = q.row !== undefined, r = q.row, n = NRM[q.dir], uo = (fix ? 0 : s.ax) + q.half * AW, vo = fix ? 0 : s.ay; let P_, uv;   // i ritagli hanno coordinate d'atlante, il resto coordinate dello sprite
+      if (q.dir < 2) { const Xp = (q.dir === 0 ? q.line : q.line + 1) - px, Yt = base - q.p0, Yb = base - q.p1; P_ = [Xp, Yb, q.d0, Xp, Yt, q.d0, Xp, Yt, q.d1, Xp, Yb, q.d1]; uv = fix ? [q.tA, r + 1, q.tA, r, q.tB, r, q.tB, r + 1] : [q.tA, q.p1, q.tA, q.p0, q.tB, q.p0, q.tB, q.p1]; }
+      else { const Yp = q.dir === 2 ? base - q.line : base - q.line - 1, X0 = q.p0 - px, X1 = q.p1 - px; P_ = [X0, Yp, q.d0, X1, Yp, q.d0, X1, Yp, q.d1, X0, Yp, q.d1]; uv = fix ? [q.tA, r + .5, q.tA, r + .5, q.tB, r + .5, q.tB, r + .5] : [q.p0, q.tA, q.p1, q.tA, q.p1, q.tB, q.p0, q.tB]; }
+      for (let k = 0; k < 4; k++) { uv[k * 2] = (uo + uv[k * 2]) / AW2; uv[k * 2 + 1] = (vo + uv[k * 2 + 1]) / AH; }
+      return { p: P_, n, sn: q.sn || n, uv };
+    });
+  }
+}
+
+/* ---------- costruttori di geometria ---------- */
+class Buf { constructor(T, cap) { this.T = T; this.a = new T(cap); this.n = 0; } need(k) { if (this.n + k > this.a.length) { const b = new this.T(Math.max(this.a.length * 2, this.n + k)); b.set(this.a); this.a = b; } } done() { return this.a.slice(0, this.n); } }
+const flipped = (p, nx, ny, nz) => { const ux = p[3] - p[0], uy = p[4] - p[1], uz = p[5] - p[2], vx = p[6] - p[0], vy = p[7] - p[1], vz = p[8] - p[2]; return ((uy * vz - uz * vy) * nx + (uz * vx - ux * vz) * ny + (ux * vy - uy * vx) * nz) < 0; };
+// fianchi: un rettangolo colorato per faccia
+class Builder {
+  constructor(cap) { this.pos = new Buf(Float32Array, cap * 12); this.nrm = new Buf(Int8Array, cap * 12); this.col = new Buf(Uint8Array, cap * 16); this.idx = new Buf(Uint32Array, cap * 6); this.v = 0; }
+  // (nx,ny,nz) orienta la faccia; (sx,sy,sz), se dato, è la normale usata per la luce
+  quad(p, nx, ny, nz, r, g, b, gl, sx, sy, sz) {
+    const order = flipped(p, nx, ny, nz) ? [0, 3, 2, 1] : [0, 1, 2, 3]; if (sx === undefined) { sx = nx; sy = ny; sz = nz; }
+    this.pos.need(12); this.nrm.need(12); this.col.need(16); this.idx.need(6);
+    const pa = this.pos.a, na = this.nrm.a, ca = this.col.a, ia = this.idx.a; let pn = this.pos.n, nn = this.nrm.n, cn = this.col.n;
+    for (let k = 0; k < 4; k++) { const o = order[k] * 3; pa[pn++] = p[o]; pa[pn++] = p[o + 1]; pa[pn++] = p[o + 2]; na[nn++] = sx * 127; na[nn++] = sy * 127; na[nn++] = sz * 127; ca[cn++] = r; ca[cn++] = g; ca[cn++] = b; ca[cn++] = gl ? 255 : 0; }
+    this.pos.n = pn; this.nrm.n = nn; this.col.n = cn;
+    const v = this.v, i = this.idx.n; ia[i] = v; ia[i + 1] = v + 1; ia[i + 2] = v + 2; ia[i + 3] = v; ia[i + 4] = v + 2; ia[i + 5] = v + 3; this.idx.n += 6; this.v += 4;
+  }
+  // luce dei lampioni calcolata una volta per faccia al caricamento, invece che per ogni pixel a ogni frame
+  bakeLamps(light) {
+    const n = this.v, out = new Uint8Array(n), p = this.pos.a, nr = this.nrm.a;
+    for (let v = 0; v < n; v += 4) {
+      let x = 0, y = 0, z = 0; for (let k = 0; k < 4; k++) { x += p[(v + k) * 3]; y += p[(v + k) * 3 + 1]; z += p[(v + k) * 3 + 2]; }
+      const b = Math.min(255, Math.round(light(x / 4, y / 4, z / 4, nr[v * 3] / 127, nr[v * 3 + 1] / 127, nr[v * 3 + 2] / 127) * 127.5));
+      out[v] = out[v + 1] = out[v + 2] = out[v + 3] = b;
+    }
+    this.lamp = out;
+  }
+  geometry() {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos.done(), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(this.nrm.done(), 3, true));
+    g.setAttribute('aCol', new THREE.BufferAttribute(this.col.done(), 4, true));
+    g.setAttribute('aLamp', new THREE.BufferAttribute(this.lamp || new Uint8Array(this.v), 1, true));
+    g.setIndex(new THREE.BufferAttribute(this.v > 65535 ? this.idx.done() : new Uint16Array(this.idx.done()), 1));
+    g.computeBoundingSphere();
+    return g;
+  }
+  get tris() { return this.idx.n / 3; }
+}
+// facce davanti e dietro: rettangoli che leggono colore e strato dall'atlante
+class SlabBuilder {
+  constructor(cap) { this.pos = new Buf(Float32Array, cap * 12); this.nrm = new Buf(Int8Array, cap * 12); this.uv = new Buf(Float32Array, cap * 8); this.lay = new Buf(Float32Array, cap * 4); this.idx = new Buf(Uint32Array, cap * 6); this.v = 0; }
+  quad(p, nx, ny, nz, uv, layer, sx, sy, sz) {
+    const order = flipped(p, nx, ny, nz) ? [0, 3, 2, 1] : [0, 1, 2, 3];
+    this.pos.need(12); this.nrm.need(12); this.uv.need(8); this.lay.need(4); this.idx.need(6);
+    const pa = this.pos.a, na = this.nrm.a, ua = this.uv.a, la = this.lay.a, ia = this.idx.a; let pn = this.pos.n, nn = this.nrm.n, un = this.uv.n, ln = this.lay.n;
+    for (let k = 0; k < 4; k++) { const o = order[k]; pa[pn++] = p[o * 3]; pa[pn++] = p[o * 3 + 1]; pa[pn++] = p[o * 3 + 2]; na[nn++] = sx * 127; na[nn++] = sy * 127; na[nn++] = sz * 127; ua[un++] = uv[o * 2]; ua[un++] = uv[o * 2 + 1]; la[ln++] = layer; }
+    this.pos.n = pn; this.nrm.n = nn; this.uv.n = un; this.lay.n = ln;
+    const v = this.v, i = this.idx.n; ia[i] = v; ia[i + 1] = v + 1; ia[i + 2] = v + 2; ia[i + 3] = v; ia[i + 4] = v + 2; ia[i + 5] = v + 3; this.idx.n += 6; this.v += 4;
+  }
+  bakeLamps(light) {
+    const n = this.v, out = new Uint8Array(n), p = this.pos.a, nr = this.nrm.a;
+    for (let v = 0; v < n; v++) out[v] = Math.min(255, Math.round(light(p[v * 3], p[v * 3 + 1], p[v * 3 + 2], nr[v * 3] / 127, nr[v * 3 + 1] / 127, nr[v * 3 + 2] / 127) * 127.5));
+    this.lamp = out;
+  }
+  geometry() {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos.done(), 3));
+    g.setAttribute('normal', new THREE.BufferAttribute(this.nrm.done(), 3, true));
+    g.setAttribute('uv', new THREE.BufferAttribute(this.uv.done(), 2));
+    g.setAttribute('aLayer', new THREE.BufferAttribute(this.lay.done(), 1));
+    g.setAttribute('aLamp', new THREE.BufferAttribute(this.lamp || new Uint8Array(this.v), 1, true));
+    g.setIndex(new THREE.BufferAttribute(this.v > 65535 ? this.idx.done() : new Uint16Array(this.idx.done()), 1));
+    g.computeBoundingSphere();
+    return g;
+  }
+  get tris() { return this.idx.n / 3; }
+}
+
+/* ---------- estrusione: ogni pixel opaco è un parallelepipedo; qui lo sprite già preparato si appoggia nel mondo ---------- */
+const tally = { px: 0 };
+const S = new SlabBuilder(30000), B = new Builder(30000);
+function put(s, x, z, o) {
+  o = o || {};
+  const rot = (((o.rot || 0) % 4) + 4) % 4, fl = o.flip ? -1 : 1, e = o.eps || 0, base = s.base, px = s.px;
+  const ox = Math.round(x * PPU) / PPU, oz = Math.round(z * PPU) / PPU, oy = o.y || 0;
+  const pts = new Array(12), g3 = [0, 0, 0], s3 = [0, 0, 0];
+  const tp = (X, Y, Z, k) => { let a = X * fl, c = Z; for (let r = 0; r < rot; r++) { const m = a; a = c; c = -m; } pts[k] = ox + e + a * P; pts[k + 1] = oy + e * .7 + Y * P; pts[k + 2] = oz + e + c * P; };
+  const tn = (v, out) => { let a = v[0] * fl, c = v[2]; for (let r = 0; r < rot; r++) { const m = a; a = c; c = -m; } out[0] = a; out[1] = v[1]; out[2] = c; };
+  // davanti e dietro: un rettangolo per strato
+  const slab = (L, front) => {
+    const code = L[0], x0 = L[1], y0 = L[2], x1 = L[3], y1 = L[4], zz = (code & 127) - 64, sg = front ? 1 : -1;
+    tp(x0 - px, base - y1, zz, 0); tp(x1 - px, base - y1, zz, 3); tp(x1 - px, base - y0, zz, 6); tp(x0 - px, base - y0, zz, 9);
+    const u0 = (s.ax + x0) / AW2, u1 = (s.ax + x1) / AW2, v0 = (s.ay + y0) / AH, v1 = (s.ay + y1) / AH;
+    tn([0, 0, sg], g3); tn(code > 127 ? (front ? ROOF_F : ROOF_B) : [0, 0, sg], s3);
+    S.quad(pts, g3[0], g3[1], g3[2], [u0, v1, u1, v1, u1, v0, u0, v0], sg * code, s3[0], s3[1], s3[2]);
+  };
+  for (const L of s.layF) slab(L, true); for (const L of s.layB) slab(L, false);
+  // fianchi
+  for (const q of s.strips) { for (let k = 0; k < 4; k++) tp(q.p[k * 3], q.p[k * 3 + 1], q.p[k * 3 + 2], k * 3); tn(q.n, g3); tn(q.sn, s3); S.quad(pts, g3[0], g3[1], g3[2], q.uv, 0, s3[0], s3[1], s3[2]); }
+  tally.px += s.count;
+  return { x: ox, z: oz };
+}
+
+/* ---------- terreno: una texture di pixel presa dalle mattonelle, con tre quote ---------- */
+const PAVE = 0, BRICK = 1, BEACH = 2, WATER = 3, EARTH = 4, PLANK = 5, HEIGHT = [0, 0, -1, -3, 0, 0], LEVEL = [2, 2, 1, 0, 2, 2];
+// la pianta: banchina e molo di lastre, piazzetta di mattoni, spiaggia di ciottoli, terrazzamenti, pontile di assi, e il mare
+const SAGRATO = { x0: 33.2, z0: 8.3, x1: 38.0, z1: 12.7 };
+function typeAt(xu, zu, x, z) {
+  const X = xu + (vnoise(x / 7 + 3.1, z / 7 + 9.7) - .5) * .4, Z = zu + (vnoise(x / 7 + 40.3, z / 7 + 1.9) - .5) * .4;
+  if (xu > 17.75 && xu < 19.25 && zu > 17 && zu < 22.5) return PLANK;                                        // pontile sull'acqua
+  if ((xu > 29.75 && xu < 33 && zu < 25.4) || Math.hypot((xu - 31.375) / 1.625, (zu - 25.4) / 1.1) < 1) return PAVE;   // molo del faro
+  if (xu < 10.6 ? zu > 19 + Math.sin(xu * .8) * .3 + (vnoise(xu / 1.5, 3.3) - .5) * .8 : zu > 17.5) return WATER;
+  if (xu < 10.6 && Z > 12.6) return BEACH;
+  if (Z < 3.2 || (X < 12.4 && Z < 12.4)) return EARTH;
+  if (X > 12.4 && X < 31 && Z > 10.2 && Z < 13.5) return BRICK;
+  return PAVE;
+}
+
+const gType = new Uint8Array(PXW * PXD), gH = new Int8Array(PXW * PXD), gLevel = new Uint8Array(PXW * PXD), gFoam = new Uint8Array(PXW * PXD), gDist = new Uint8Array(PXW * PXD);
+const gCan = document.createElement('canvas'); gCan.width = PXW; gCan.height = PXD;
+const gCtx = gCan.getContext('2d'), gImg = gCtx.createImageData(PXW, PXD);
+const putPx = (i, c) => { gImg.data[i * 4] = c >> 16 & 255; gImg.data[i * 4 + 1] = c >> 8 & 255; gImg.data[i * 4 + 2] = c & 255; gImg.data[i * 4 + 3] = 255; };
+const tilePx = (k, x, z) => { const q = ((((z % TH) + TH) % TH) * AT.w + k * TW + (((x % TW) + TW) % TW)) * 4; return tilesPx[q] << 16 | tilesPx[q + 1] << 8 | tilesPx[q + 2]; };
+const mul3 = (c, r, g, b) => Math.min(255, (c >> 16 & 255) * r) << 16 | Math.min(255, (c >> 8 & 255) * g) << 8 | Math.min(255, (c & 255) * b);
+const mul = (c, f) => mul3(c, f, f, f);
+const waterIdx = [];
+// il mare: turchese dove è basso, blu dove è fondo; le increspature scorrono, la schiuma batte contro la riva
+const waterColor = (i, tick) => {
+  const x = i % PXW, z = (i / PXW) | 0, d = gDist[i];
+  if (gFoam[i] === 1 && (x + z + tick) % 3) return 0xdcefe8;
+  if (gFoam[i] === 2 && (x * 3 + z * 2 + tick) % 5 === 0) return 0xa8dcd8;
+  const base = d < 26 ? mixc(0x4fb4b0, 0x2a7fa0, d / 26) : mixc(0x2a7fa0, 0x1a5a84, Math.min(1, (d - 26) / 30));
+  const v = Math.sin(x * .21 + z * .55 + tick * .8) + Math.sin(x * .13 - z * .31 - tick * .55) * .8 + (hash2(x >> 1, z >> 1) - .5) * .7;
+  return v > 1.45 ? shade(base, 1.32) : v < -1.5 ? shade(base, .84) : base;
+};
+(function buildGround() {
+  for (let z = 0; z < PXD; z++) for (let x = 0; x < PXW; x++) {
+    const i = z * PXW + x, t = typeAt((x + .5) * P, (z + .5) * P, x, z);
+    gType[i] = t; gH[i] = HEIGHT[t]; gLevel[i] = LEVEL[t];
+  }
+  // distanza dalla terraferma, per il colore del fondale e la schiuma
+  const q = []; gDist.fill(255);
+  for (let i = 0; i < PXW * PXD; i++) if (gType[i] !== WATER) { gDist[i] = 0; q.push(i); }
+  for (let k = 0; k < q.length; k++) { const i = q[k], x = i % PXW, z = (i / PXW) | 0, d = gDist[i] + 1; if (d > 60) continue; for (const j of [x > 0 ? i - 1 : -1, x < PXW - 1 ? i + 1 : -1, z > 0 ? i - PXW : -1, z < PXD - 1 ? i + PXW : -1]) if (j >= 0 && gDist[j] > d) { gDist[j] = d; q.push(j); } }
+  const ty = (x, z) => gType[clamp(z, 0, PXD - 1) * PXW + clamp(x, 0, PXW - 1)];
+  for (let z = 0; z < PXD; z++) for (let x = 0; x < PXW; x++) {
+    const i = z * PXW + x, t = gType[i], tint = .94 + vnoise(x / 40 + 7, z / 40 + 2) * .12;
+    const near = (k) => ty(x - 1, z) === k || ty(x + 1, z) === k || ty(x, z - 1) === k || ty(x, z + 1) === k;
+    if (t === WATER) { waterIdx.push(i); gFoam[i] = gDist[i] <= 1 ? 1 : gDist[i] <= 3 ? 2 : 0; putPx(i, waterColor(i, 0)); continue; }
+    let c = mul(tilePx(t, x, z), tint);
+    if (t === PAVE) { if (near(WATER)) c = 0xd2c9b6; else if (near(BRICK) || near(EARTH) || near(BEACH)) c = mul(c, .86); }
+    else if (t === BRICK) { if (near(PAVE)) c = mul(c, .88); }
+    else if (t === BEACH) { const wet = Math.max(0, 1 - Math.min(...[1, 2, 3, 4, 5].map((r) => ty(x, z + r) === WATER ? r : 9)) / 6); c = mul3(c, 1 - wet * .35, 1 - wet * .3, 1 - wet * .22); }
+    else if (t === EARTH) { if (near(PAVE) || near(BRICK) || near(BEACH)) c = mul(c, .85); }
+    else if (t === PLANK && (near(WATER) || near(PAVE))) c = mul(c, .7);
+    putPx(i, c);
+  }
+  // sagrato di risseu: ciottoli bianchi e neri messi di taglio, con una rosa dei venti al centro
+  const sx0 = Math.round(SAGRATO.x0 * PPU), sz0 = Math.round(SAGRATO.z0 * PPU), sw = Math.round((SAGRATO.x1 - SAGRATO.x0) * PPU), sh = Math.round((SAGRATO.z1 - SAGRATO.z0) * PPU);
+  for (let j = 0; j < sh; j++) for (let k = 0; k < sw; k++) {
+    const u = (k >> 1) - (sw >> 2), v = (j >> 1) - (sh >> 2), e = Math.min(k, j, sw - 1 - k, sh - 1 - j), r = Math.hypot(u, v), a = Math.atan2(v, u);
+    let dark = e < 2 || (e >= 4 && e < 6) || (r > 12 && r < 13.5) || (r < 11 && Math.cos(a * 8) > .55 + r / 26) || r < 1.5;
+    if (e >= 6 && r >= 13.5 && ((u + v) & 7) === 0 && ((u - v) & 7) === 0) dark = true;
+    let c = dark ? 0x3a3a40 : 0xe4ded0; if (k % 2 && j % 2) c = mul(c, .82); else if (!(k % 2) && !(j % 2)) c = mul(c, 1.06);
+    putPx((sz0 + j) * PXW + sx0 + k, jit(c, k, j, 9, .1));
+  }
+  gCtx.putImageData(gImg, 0, 0);
+})();
+function groundY(x, z) { const px = clamp(Math.floor(x * PPU), 0, PXW - 1), pz = clamp(Math.floor(z * PPU), 0, PXD - 1); return gH[pz * PXW + px] * P; }
+const isWater = (x, z) => gType[clamp(Math.floor(z * PPU), 0, PXD - 1) * PXW + clamp(Math.floor(x * PPU), 0, PXW - 1)] === WATER;
+
+/* ---------- three.js ---------- */
+const canvas = $('gl');
+let renderer;
+try { renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' }); }
+catch (e) { $('fallback').hidden = false; return; }
+renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.BasicShadowMap;
+renderer.info.autoReset = false;
+
+const scene = new THREE.Scene();
+const hemi = new THREE.HemisphereLight(0xffffff, 0x444444, .6); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffffff, 1); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); sun.shadow.autoUpdate = false;
+Object.assign(sun.shadow.camera, { left: -27, right: 27, top: 27, bottom: -27, near: 1, far: 100 }); sun.shadow.bias = -0.0004;
+sun.target.position.set(W / 2, 0, D / 2); scene.add(sun); scene.add(sun.target);
+
+const nearest = (t) => { t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; };
+const groundTex = nearest(new THREE.CanvasTexture(gCan)); groundTex.flipY = false; groundTex.encoding = THREE.sRGBEncoding;
+const gPack = new Uint8Array(PXW * PXD * 2); for (let i = 0; i < PXW * PXD; i++) gPack[i * 2] = gLevel[i];   // per pixel: quota e luce dei lampioni
+const heightTex = nearest(new THREE.DataTexture(gPack, PXW, PXD, THREE.LuminanceAlphaFormat, THREE.UnsignedByteType)); heightTex.unpackAlignment = 1; heightTex.needsUpdate = true;
+// l'atlante degli oggetti: i colori, e accanto la tabella degli strati
+const atlasTex = nearest(new THREE.DataTexture(atlasPx, AW2, AH, THREE.RGBAFormat, THREE.UnsignedByteType)); atlasTex.encoding = THREE.sRGBEncoding; atlasTex.needsUpdate = true;
+const auxTex = nearest(new THREE.DataTexture(auxPx, AW2, AH, THREE.RGBAFormat, THREE.UnsignedByteType));
+
+/* Materiale: colore per pixel, bagliore, e ombre lette al centro della cella da 1/16 (ombre a scalini sulla griglia) */
+const uGlow = { value: 0 }, uLampCol = { value: new THREE.Vector3() }, diag = { flat: false }, allMats = [];
+const LIGHTS = THREE.ShaderChunk.lights_fragment_begin.split('vDirectionalShadowCoord[ i ]').join('vxShadowCoord');
+const LAYER_TEST = 'vec4 vxA = texture2D(uAux, vUv); if (abs(vLayer) > 0.5 && abs((vLayer < 0.0 ? vxA.g : vxA.r) * 255.0 - abs(vLayer)) > 0.5) discard;';   // ogni rettangolo tiene solo i pixel del proprio strato; le strisce dei fianchi (strato 0) tengono tutto
+function voxelMaterial(kind, o) {
+  const ground = kind === 'ground', sprite = kind === 'sprite', slab = kind === 'slab';
+  const m = new THREE.MeshPhongMaterial({ color: 0xffffff, specular: 0x000000, shininess: 0, map: ground ? groundTex : sprite ? o.map : slab ? atlasTex : null, alphaTest: sprite ? .5 : 0 });
+  m.onBeforeCompile = (sh) => {
+    sh.uniforms.uShadowMat = { value: sun.shadow.matrix };
+    sh.uniforms.uGlow = uGlow;
+    sh.uniforms.uLampCol = uLampCol;
+    if (ground) sh.uniforms.uHeightTex = { value: heightTex };
+    if (slab) sh.uniforms.uAux = { value: auxTex };
+    if (sprite) { sh.uniforms.uProbe = { value: o.probe }; sh.uniforms.uRow = { value: o.row }; sh.uniforms.uLampL = o.lampL; }
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vWPos; varying vec3 vWNrm;\n' + (ground ? 'attribute float aLevel; varying float vLevel;' : sprite ? '' : slab ? 'attribute float aLayer; varying float vLayer; attribute float aLamp; varying float vLamp;' : 'attribute vec4 aCol; varying vec4 vCol; attribute float aLamp; varying float vLamp;'))
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvWPos = (modelMatrix * vec4(transformed, 1.0)).xyz; vWNrm = normalize(mat3(modelMatrix) * normal);\n' + (ground ? 'vLevel = aLevel;' : sprite ? '' : slab ? 'vLayer = aLayer; vLamp = aLamp;' : 'vCol = aCol; vLamp = aLamp;'));
+    let f = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWPos; varying vec3 vWNrm; uniform mat4 uShadowMat; uniform float uGlow; uniform vec3 uLampCol;\n' + (ground ? 'uniform sampler2D uHeightTex; varying float vLevel;' : sprite ? 'uniform vec3 uProbe; uniform vec2 uRow; uniform float uLampL;' : slab ? 'uniform sampler2D uAux; varying float vLayer; varying float vLamp;' : 'varying vec4 vCol; varying float vLamp;'));
+    // terreno: ogni piano tiene solo i pixel della propria quota, così ogni pixel si colora una volta sola
+    f = f.replace('void main() {', 'void main() {\n' + (ground ? 'vec4 vxG = texture2D(uHeightTex, vUv); if (abs(vxG.r * 255.0 - vLevel) > 0.5) discard; float vxLamp = vxG.a * 2.0;' : sprite ? 'float vxLamp = uLampL;' : slab ? LAYER_TEST + ' float vxLamp = vLamp * 2.0;' : 'float vxLamp = vLamp * 2.0;'));
+    if (slab) f = f.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vxA.b * uGlow * 1.5;');
+    else if (!ground && !sprite) f = f.replace('#include <color_fragment>', '#include <color_fragment>\nvec3 vxBase = pow(vCol.rgb, vec3(2.2)); diffuseColor.rgb *= vxBase;')
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vxBase * vCol.a * uGlow * 1.5;');
+    // figurine: l'ombra si legge in un punto davanti al personaggio, una riga di pixel alla volta; tutto il resto al centro della cella da 1/16
+    const coord = sprite
+      ? 'vec4 vxShadowCoord = uShadowMat * vec4(uProbe.x, uProbe.y + (floor((vWPos.y - uProbe.y) / uRow.x) + 0.5) * uRow.y, uProbe.z, 1.0);\n'
+      : 'vec3 vxP = vWPos + normalize(vWNrm) * 0.03125;\nvec4 vxShadowCoord = uShadowMat * vec4((floor(vxP * 16.0) + 0.5) * 0.0625, 1.0);\n';
+    sh.fragmentShader = diag.flat
+      ? f.replace('#include <lights_fragment_begin>', '').replace('#include <lights_fragment_maps>', '').replace('#include <lights_fragment_end>', '').replace(/vec3 outgoingLight = [^;]+;/, 'vec3 outgoingLight = diffuseColor.rgb * 0.8 + totalEmissiveRadiance;')
+      : f.replace('#include <lights_fragment_begin>', coord + LIGHTS).replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\nreflectedLight.directDiffuse += material.diffuseColor * uLampCol * vxLamp;');
+  };
+  m.customProgramCacheKey = () => 'vx-' + kind + (diag.flat ? '-flat' : '');
+  allMats.push(m);
+  return m;
+}
+const matStatic = voxelMaterial('static'), matGround = voxelMaterial('ground'), matSlab = voxelMaterial('slab');
+// nella mappa delle ombre vale la stessa regola degli strati
+const slabDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: atlasTex });
+slabDepth.onBeforeCompile = (sh) => {
+  sh.uniforms.uAux = { value: auxTex };
+  sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float aLayer; varying float vLayer;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvLayer = aLayer;');
+  sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uAux; varying float vLayer;').replace('void main() {', 'void main() {\n' + LAYER_TEST);
+};
+
+/* ---------- gli oggetti: ogni disegno arriva già con la sua profondità, pixel per pixel ---------- */
+for (const key of PATCHES) new Spr(key);      // ritagli per ardesia, legno, scogli e pesce: mai appoggiati nel mondo
+for (const key in AP.sprites) if (!sp[key]) new Spr(key);
+auxTex.needsUpdate = true;
+const PLACED = SPRITES.length - PATCHES.length;
+
+/* ---------- costruzione del borgo ---------- */
+const solids = [], acts = [], lampSpots = [];
+const solid = (x0, z0, x1, z1) => solids.push({ x0, z0, x1, z1 });
+const spot = (x, y, z, r, k, halo) => lampSpots.push({ x, y, z, r, k, halo: halo !== false });
+
+// lati del terreno (salti di quota) e fianchi del basamento: la banchina è un muro di blocchi, sotto il mare si vede il fondale
+(function groundWalls() {
+  const lip = [0xc8bea8, 0xa86a4a, 0x9a8e7c, 0x2a7090, 0x6a7a3a, 0x5e3f28];
+  const rgb = (c) => [c >> 16 & 255, c >> 8 & 255, c & 255];
+  const wall = (xa, za, xb, zb, y0, y1, nx, nz, c) => { if (y1 <= y0) return; const [r, g, b] = rgb(c); B.quad([xa * P, y0 * P, za * P, xb * P, y0 * P, zb * P, xb * P, y1 * P, zb * P, xa * P, y1 * P, za * P], nx, 0, nz, r, g, b, 0); };
+  const soil = (t, x, z) => t === PLANK ? 0x4a3424 : t === BEACH ? 0x7e7262 : t === EARTH ? 0x7a5a3a : ((x + z) >> 3) % 2 ? 0x8a8274 : 0x7a7266;
+  const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+  for (let z = 0; z < PXD; z++) for (let x = 0; x < PXW; x++) {
+    const i = z * PXW + x, h = gH[i], t = gType[i];
+    for (const [dx, dz] of dirs) {
+      const nx = x + dx, nz = z + dz; if (nx < 0 || nz < 0 || nx >= PXW || nz >= PXD) continue;
+      const hn = gH[nz * PXW + nx]; if (hn >= h) continue;
+      const xa = dx < 0 ? x : dx > 0 ? x + 1 : x, za = dz < 0 ? z : dz > 0 ? z + 1 : z;
+      const fa = dx !== 0 ? [xa, z, xa, z + 1] : [x, za, x + 1, za];
+      wall(fa[0], fa[1], fa[2], fa[3], Math.max(hn, h - 1), h, dx, dz, lip[t]);
+      wall(fa[0], fa[1], fa[2], fa[3], hn, h - 1, dx, dz, soil(t, x, z));
+    }
+  }
+  const BOT = -30;
+  const strip = (xa, za, xb, zb, nx, nz, i, k) => {
+    const top = gH[i], t = gType[i], blot = hash2(Math.floor(k / 3), 17);
+    const y1 = -8 + Math.round((vnoise(k / 11, 2.3) - .5) * 5), y2 = -18 + Math.round((vnoise(k / 15, 8.1) - .5) * 7);
+    if (t === WATER) {   // il mare tagliato di netto: acqua sempre più scura, poi sabbia e roccia del fondale
+      wall(xa, za, xb, zb, top - 1, top, nx, nz, 0x6ac0c0);
+      wall(xa, za, xb, zb, y1 - 4, top - 1, nx, nz, 0x2a7fa0);
+      wall(xa, za, xb, zb, y2, y1 - 4, nx, nz, 0x1d5f86);
+      wall(xa, za, xb, zb, y2 - 4, y2, nx, nz, blot > .5 ? 0xb8a888 : 0xa89878);
+      wall(xa, za, xb, zb, BOT, y2 - 4, nx, nz, blot > .7 ? 0x6a6258 : 0x5e564c);
+      return;
+    }
+    wall(xa, za, xb, zb, top - 2, top, nx, nz, lip[t]);
+    wall(xa, za, xb, zb, y1, top - 2, nx, nz, blot > .5 ? 0x9a8f7c : 0x8e8370);
+    wall(xa, za, xb, zb, y2, y1, nx, nz, blot > .5 ? 0x7e7462 : 0x746a58);
+    wall(xa, za, xb, zb, BOT, y2, nx, nz, blot > .7 ? 0x5e564c : 0x544c42);
+  };
+  for (let x = 0; x < PXW; x++) { strip(x, 0, x + 1, 0, 0, -1, x, x); strip(x, PXD, x + 1, PXD, 0, 1, (PXD - 1) * PXW + x, x + 900); }
+  for (let z = 0; z < PXD; z++) { strip(0, z, 0, z + 1, -1, 0, z * PXW, z + 2000); strip(PXW, z, PXW, z + 1, 1, 0, z * PXW + PXW - 1, z + 3100); }
+})();
+
+// case: il centro del volume sta mezza profondità dietro la facciata; due file sfalsate, quella dietro sembra più in alto sulla collina
+function building(key, cx, front, o) {
+  o = o || {}; const m = AP.sprites[key], hd = m.hd, hw = m.r[2] / 2, p = put(sp[key], cx, front - hd * P, o);
+  solid(p.x - hw * P, p.z - hd * P, p.x + hw * P, p.z + hd * P + .1); if (o.light) spot(p.x, 1.1, p.z + hd * P + 1, 0, .5, false); return p;
+}
+function row(keys, x0, front, light) { let x = x0; return keys.map(([k, flip]) => { const w = AP.sprites[k].r[2] * P; const p = building(k, x + w / 2, front, { flip: !!flip, light }); x += w; return p; }); }
+const backRow = row([['casa_terra'], ['casa_pesca', 1], ['casa_rosa'], ['casa_ocra'], ['casa_terra', 1], ['casa_gialla'], ['casa_pesca']], 13.4, 5.6, false);
+const frontRow = row([['casa_rosa'], ['casa_gialla'], ['casa_ocra'], ['casa_pesca'], ['casa_terra'], ['casa_rosa', 1], ['casa_gialla', 1], ['casa_ocra', 1]], 12.8, 10.2, true);
+const pChurch = building('chiesa', 35.6, 8.0, { light: true });
+const pBell = put(sp.campanile, 38.9, 6.3); solid(pBell.x - .75, pBell.z - .75, pBell.x + .75, pBell.z + .75);
+const pFaro = put(sp.faro, 31.4, 24.4); solid(pFaro.x - .8, pFaro.z - .8, pFaro.x + .8, pFaro.z + .8); spot(pFaro.x, 5.4, pFaro.z, 4.6, 1.1);
+
+function thing(key, x, z, hx, hz, o) { const p = put(sp[key], x, z, o); if (hx) solid(p.x - hx, p.z - hz, p.x + hx, p.z + hz); return p; }
+// terrazzamenti a ponente: muretti con la vigna, l'edicola nel muro, i limoni
+for (const z of [3.0, 5.6, 8.2]) for (const x of z === 8.2 ? [2.1, 6.2] : [2.1, 6.2, 10.3]) { put(sp.vigna, x, z - 4 * P); solid(x - 2, z - 1.1, x + 2, z); }
+const pShrine = put(sp.edicola, 10.0, 8.3 - 4 * P); solid(pShrine.x - 1.4, pShrine.z - .4, pShrine.x + 1.4, pShrine.z + .45); spot(pShrine.x, .9, pShrine.z + .5, 1.1, .45);
+const pLemon = thing('limone', 1.7, 11.0, .2, .2); thing('limone', 11.8, 11.7, .2, .2, { flip: true }); thing('limone', 32.0, 7.0, .2, .2);
+[[1.8, 1.2], [8.6, .9, 1], [34.2, 2.2]].forEach(([x, z, f]) => thing('pino', x, z, .3, .3, { flip: !!f }));
+[[31.5, 10.6], [39.2, 10.4]].forEach(([x, z]) => thing('limone_vaso', x, z, .3, .25));
+[[14.1, 10.5], [21.8, 10.5], [27.2, 10.5], [33.4, 8.4]].forEach(([x, z]) => thing('vaso', x, z, .25, .2));
+function agave(x, z) { const p = put(sp.agave, x, z); put(sp.agave, p.x, p.z, { rot: 1, eps: 0.002 }); solid(p.x - .3, p.z - .3, p.x + .3, p.z + .3); }
+[[.8, 13.1], [10.1, 12.3], [32.7, 17.9], [39.3, 13.2]].forEach(([x, z]) => agave(x, z));
+
+// spiaggia: reti stese e gozzi tirati in secco
+const pNets = thing('reti_r', 3.0, 12.9, 1.55, .15); thing('reti_v', 8.0, 13.0, 1.55, .15);
+solid(1.5, 12.9, 4.5, 14.3); solid(6.5, 13.0, 9.5, 14.4);
+const yb = -1 * P;
+const pBoat = thing('gozzo_r', 6.6, 16.9, 1.4, .5, { y: yb }); thing('gozzo_b', 2.9, 16.0, 1.4, .5, { y: yb, flip: true }); thing('gozzo_v', 9.4, 15.4, .5, 1.4, { y: yb, rot: 3 });
+// barche ormeggiate e pali del pontile, nell'acqua
+const yw = -6 * P;
+put(sp.gozzo_v, 21.2, 19.6, { y: yw }); put(sp.gozzo_b, 14.6, 20.8, { y: yw, flip: true }); put(sp.gozzo_r, 25.4, 23.0, { y: yw, rot: 1 });
+for (const z of [18.6, 20.4, 22.3]) for (const x of [17.6, 19.4]) put(sp.palo, x, z, { y: -7 * P });
+[['scoglio_a', 29.0, 20.4], ['scoglio_b', 33.7, 19.4, 1], ['scoglio_a', 33.9, 23.4, 1], ['scoglio_b', 29.1, 24.6], ['scoglio_b', 31.5, 26.9, 1], ['scoglio_b', 11.2, 18.6]].forEach(([k, x, z, f]) => put(sp[k], x, z, { y: -3 * P, flip: !!f }));
+
+// banchina: banco del pesce, cassette, botti, bitte, l'ancora, i lampioni
+const pStall = thing('banco', 24.4, 11.6, 1.35, .75);
+thing('cassette', 26.7, 11.3, .7, .45); thing('cassette', 37.6, 15.3, .7, .45, { flip: true });
+[[27.8, 11.0], [13.6, 11.1], [38.8, 14.6]].forEach(([x, z]) => thing('botte', x, z, .38, .38));
+[[12.2, 17.1], [16.4, 17.1], [21.0, 17.1], [25.4, 17.1], [28.6, 17.1], [34.5, 17.1], [38.4, 17.1], [30.2, 19.5], [32.6, 22.2]].forEach(([x, z]) => thing('bitta', x, z, .2, .2));
+const pAnchor = thing('ancora', 15.6, 15.2, .7, .45);
+[[13.0, 13.7], [20.6, 13.7], [28.3, 13.7], [36.6, 14.4], [32.6, 19.4]].forEach(([x, z]) => { const p = thing('lampione', x, z, .18, .18); spot(p.x, 2.05, p.z, 2.4, .9); });
+
+acts.push({ x: 3.0, z: 14.7, r: 1.1, label: 'Guarda le reti', name: 'Reti', voice: 210, lines: ['Reti da pesca stese ad asciugare, rosse e verdi.', 'Le maglie sono buchi veri: tra un nodo e l’altro si vede la spiaggia.'] });
+acts.push({ x: pBoat.x, z: 15.9, r: 1, label: 'Guarda il gozzo', name: 'Gozzo', voice: 180, lines: ['Un gozzo ligure, tirato in secco sui ciottoli.', 'Dentro ci sono assi e banchi: vengono da un ritaglio di legno ripetuto lungo la profondità.'] });
+acts.push({ x: pFaro.x, z: 23.2, r: 1.1, label: 'Guarda la lanterna del faro', name: 'Faro', voice: 150, lines: ['In cima c’è la lanterna, dietro vetri gialli.', 'Di giorno è solo vetro. Di sera i suoi pixel si accendono da soli.'] });
+acts.push({ x: pAnchor.x, z: 15.95, r: 1, label: 'Guarda l’ancora', name: 'Ancora', voice: 120, lines: ['Una vecchia ancora, ferro e ruggine.', 'Larga ventisei pixel, spessa quattro. Nessuno ricorda di che nave fosse.'] });
+acts.push({ x: pShrine.x, z: 9.05, r: 1, label: 'Guarda l’edicola', name: 'Edicola', voice: 260, lines: ['Una Madonnina nel muro, con il lumino acceso.', 'La nicchia rientra di cinque pixel: l’ombra là dentro è vera, non dipinta.'] });
+acts.push({ x: pBell.x, z: 7.6, r: 1, label: 'Guarda il campanile', name: 'Campanile', voice: 140, lines: ['Strisce bianche e grigie, come le chiese della Riviera.', 'Pianta quadrata: le strisce girano su tutti e quattro i lati, e tra gli archi si vedono le campane.'] });
+acts.push({ x: pLemon.x + .9, z: 11.7, r: 1, label: 'Annusa i limoni', name: 'Limoni', voice: 330, lines: ['Profumano fin dalla spiaggia.', 'La chioma è tornita: ogni riga è un disco, e il raggio cambia a scatti di tre pixel.'] });
+acts.push({ x: 6.2, z: 8.75, r: 1, label: 'Guarda la vigna', name: 'Vigna', voice: 240, lines: ['Muretti a secco e filari di viti, un gradino sopra l’altro.', 'Ogni muretto porta la sua vigna dieci pixel più indietro.'] });
+
+// gabbiani: piccole sagome che girano larghe sul porto, fuori dalla geometria ferma
+const GULLS = reduceMotion ? 0 : 7, gullPos = new Float32Array(GULLS * 3), gullSeed = [];
+for (let i = 0; i < GULLS; i++) gullSeed.push({ cx: 12 + R() * 22, cz: 17 + R() * 7, r: 2.5 + R() * 4, h: 4.5 + R() * 2.5, w: (.18 + R() * .12) * (R() < .5 ? -1 : 1), a: R() * 6.3 });
+const gullTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 8; const x = c.getContext('2d'); x.fillStyle = '#f4f2ec'; for (const [a, b] of [[0, 3], [1, 2], [2, 2], [3, 3], [4, 3], [5, 2], [6, 2], [7, 3]]) x.fillRect(a, b, 1, 1); x.fillStyle = '#3a3a40'; x.fillRect(0, 3, 1, 1); x.fillRect(7, 3, 1, 1); return nearest(new THREE.CanvasTexture(c)); })();
+const gullMat = new THREE.PointsMaterial({ size: 8, sizeAttenuation: false, map: gullTex, transparent: true, alphaTest: .5, depthWrite: false });
+if (GULLS) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(gullPos, 3)); const pts = new THREE.Points(g, gullMat); pts.frustumCulled = false; scene.add(pts); gullMat.userData.geo = g; }
+function animateLife(dt, time, vv) {
+  if (!GULLS) return;
+  for (let i = 0; i < GULLS; i++) { const s = gullSeed[i], a = s.a + time * s.w; gullPos[i * 3] = s.cx + Math.cos(a) * s.r; gullPos[i * 3 + 1] = s.h + Math.sin(time * .9 + i) * .25; gullPos[i * 3 + 2] = s.cz + Math.sin(a) * s.r * .6; }
+  gullMat.userData.geo.attributes.position.needsUpdate = true;
+  const f = clamp(cur.hemiI * .7 + cur.sunI * .3, .35, 1); gullMat.color.setRGB(f, f * .97, f * .93); gullMat.size = Math.max(6, rt.height / vv * P * 9);
+}
+
+function lampLight(x, y, z, nx, ny, nz) {
+  let L = 0;
+  for (const p of lampSpots) { const lx = p.x - x, ly = p.y - y, lz = p.z + .3 - z, d = Math.hypot(lx, ly, lz); if (d >= 6.5 || d < 1e-4) continue; const ndl = (nx * lx + ny * ly + nz * lz) / d; if (ndl > 0) L += Math.pow(1 - d / 6.5, 1.6) * ndl * p.k; }
+  return L;
+}
+B.bakeLamps(lampLight); S.bakeLamps(lampLight);
+for (let i = 0; i < PXW * PXD; i++) gPack[i * 2 + 1] = Math.min(255, Math.round(lampLight(((i % PXW) + .5) * P, gH[i] * P, (((i / PXW) | 0) + .5) * P, 0, 1, 0) * 127.5));
+heightTex.needsUpdate = true;
+const staticMesh = new THREE.Mesh(B.geometry(), matStatic);
+staticMesh.castShadow = true; staticMesh.receiveShadow = true; staticMesh.frustumCulled = false; scene.add(staticMesh);
+const slabMesh = new THREE.Mesh(S.geometry(), matSlab);
+slabMesh.castShadow = true; slabMesh.receiveShadow = true; slabMesh.frustumCulled = false; slabMesh.customDepthMaterial = slabDepth; scene.add(slabMesh);
+const staticTris = B.tris + S.tris;
+
+// terreno: tre piani sovrapposti, ognuno scarta i pixel che non sono alla propria quota
+(function groundMesh() {
+  const g = new THREE.BufferGeometry(), pos = [], nrm = [], uv = [], lev = [], idx = [];
+  [-3, -1, 0].forEach((y, l) => { const v = l * 4; pos.push(0, y * P, D, W, y * P, D, W, y * P, 0, 0, y * P, 0); uv.push(0, 1, 1, 1, 1, 0, 0, 0); for (let k = 0; k < 4; k++) { nrm.push(0, 1, 0); lev.push(l); } idx.push(v, v + 1, v + 2, v, v + 2, v + 3); });
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3)); g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); g.setAttribute('aLevel', new THREE.Float32BufferAttribute(lev, 1)); g.setIndex(idx);
+  const m = new THREE.Mesh(g, matGround); m.receiveShadow = true; m.frustumCulled = false; scene.add(m);
+})();
+
+/* ---------- personaggi: figurine piatte sempre rivolte alla camera ---------- */
+const charCan = document.createElement('canvas'); charCan.width = AC.w; charCan.height = AC.h;
+charCan.getContext('2d').putImageData(new ImageData(charsPx, AC.w, AC.h), 0, 0);
+// colonne del foglio: davanti, dietro, lato, due passi davanti, due passi dietro, un passo di lato
+const FRAMES = { down: [{ c: 0 }, { c: 3 }, { c: 4 }], up: [{ c: 1 }, { c: 5 }, { c: 6 }], right: [{ c: 2 }, { c: 7 }], left: [{ c: 2, flip: true }, { c: 7, flip: true }] };
+const actors = [];
+// la sagoma che proietta l'ombra è un secondo quadrato invisibile, sempre girato verso il sole
+const casterMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide });
+function actor(row, x, z, o) {
+  const a = Object.assign({ row, x, z, fx: 0, fz: 1, step: 0, scale: 1, probe: new THREE.Vector3(), lampL: { value: 0 } }, o || {});
+  a.tex = nearest(new THREE.CanvasTexture(charCan)); a.tex.encoding = THREE.sRGBEncoding;
+  const g = new THREE.PlaneGeometry(CW * P, CH * P); g.translate(0, CH * P / 2, 0);
+  const gl = g.clone(), n = gl.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);   // normale verso l'alto: la luce non cambia ruotando la visuale
+  a.mesh = new THREE.Mesh(gl, voxelMaterial('sprite', { map: a.tex, probe: a.probe, lampL: a.lampL, row: new THREE.Vector2(SPR_Y * a.scale * P, a.scale * P) }));
+  a.mesh.receiveShadow = true; a.mesh.scale.set(a.scale, a.scale * SPR_Y, 1);
+  a.caster = new THREE.Mesh(g, casterMat); a.caster.castShadow = true; a.caster.scale.setScalar(a.scale);
+  a.caster.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: a.tex, alphaTest: .5 });
+  scene.add(a.mesh); scene.add(a.caster); actors.push(a); return a;
+}
+const player = actor(0, 20, 15.6);
+function npc(row, name, x, z, face, lines, voice, scale) {
+  const a = actor(row, x, z, { fx: face[0], fz: face[1], npc: true, scale: scale || 1 });
+  solid(x - .28, z - .2, x + .28, z + .2);
+  acts.push({ x, z, r: 1.1, label: 'Parla con ' + name, name, lines, voice, actor: a });
+  return a;
+}
+npc(1, 'Baciccia', 5.0, 14.6, [0, 1], ['Che tramonto, eh? Stanotte si esce con la lampara.', 'Il gozzo l’ha disegnato il codice: ogni colonna sa quanto è largo lo scafo in quel punto, e si stringe verso la chiglia.', 'Le reti le stendiamo ad asciugare. Ogni riga sta un pixel più avanti di quella sopra: per questo sembrano tirate.'], 150);
+npc(2, 'Marinella', 22.5, 12.7, [0, 1], ['Acciughe, totani, polpi! Pescati stamattina, disegnati stanotte.', 'Il tendone è un telo inclinato: otto righe, ognuna tre pixel più avanti di quella sopra.', 'Le case qui sono strette e alte, una sopra l’altra. Le persiane sporgono di un pixel, i davanzali di due.'], 380);
+npc(3, 'Nina', 6.1, 10.7, [0, 1], ['Lei è Acciuga. Un’acciuga vera non l’ha mai mangiata, però.', 'Di sera la nonna accende il lumino dell’edicola. Premi T e guardalo brillare.', 'Ho contato le finestre: alcune sono accese, altre hanno le persiane chiuse. Cambia da casa a casa.'], 560, .84);
+npc(4, 'Tonio', 30.4, 21.6, [1, 0], ['Il faro è una torre quadrata: ogni riga è profonda quanto è larga, e la facciata gira su tutti i lati.', 'La sua luce non è una lampada vera: è calcolata una volta sola, quando il borgo si carica.', 'Da qui vedo tutto il porto. Gira la vista con Q ed E, se vuoi vederlo anche tu.'], 120);
+{
+  const cat = actor(5, 7.1, 11.0, { fx: -1, fz: 0, npc: true });
+  solid(6.85, 10.85, 7.35, 11.15);
+  acts.push({ x: 7.1, z: 11.0, r: .95, label: 'Accarezza il gatto', name: 'Acciuga', voice: 880, lines: ['Miao.', '(Acciuga è larga dieci pixel e piatta come una figurina. Fa le fusa lo stesso.)'], actor: cat });
+}
+
+// lampioni: alone intorno alla luce
+const haloTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(.25, 'rgba(255,255,255,.45)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const lamps = lampSpots.filter((p) => p.halo).map((p) => { const h = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex, color: 0xffb060, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); h.position.set(p.x, p.y, p.z); h.scale.setScalar(p.r); scene.add(h); return h; });
+
+/* ---------- ore del giorno ---------- */
+const lin = (h) => [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255].map((v) => v * v);
+const TODS = [
+  { label: 'giorno', sun: lin(0xfff0cf), sunI: 1.22, az: -.75, el: .98, sky: lin(0xdfe9ff), gnd: lin(0xa89e8c), hemiI: .8, glow: 0, lamp: 0, top: lin(0x4f9fd9), bot: lin(0xd6e8f0), stars: 0 },
+  { label: 'tramonto', sun: lin(0xff8f4a), sunI: 1.5, az: -1.2, el: .36, sky: lin(0xd8a0c8), gnd: lin(0xb06a4a), hemiI: .66, glow: .85, lamp: .9, top: lin(0x3a2a66), bot: lin(0xe27a3a), stars: .15 },
+  { label: 'notte', sun: lin(0x9db4ff), sunI: .55, az: .7, el: .9, sky: lin(0x5a66c8), gnd: lin(0x3a2c4a), hemiI: .5, glow: 1, lamp: 1.5, top: lin(0x060818), bot: lin(0x1c2452), stars: 1 },
+];
+let tod = 1;   // si arriva al tramonto
+const cur = JSON.parse(JSON.stringify(TODS[tod]));
+function applyTod(k) {
+  const T = TODS[tod];
+  for (const key of ['sunI', 'az', 'el', 'hemiI', 'glow', 'lamp', 'stars']) cur[key] = lerp(cur[key], T[key], k);
+  for (const key of ['sun', 'sky', 'gnd', 'top', 'bot']) for (let i = 0; i < 3; i++) cur[key][i] = lerp(cur[key][i], T[key][i], k);
+  sun.color.setRGB(cur.sun[0], cur.sun[1], cur.sun[2]); sun.intensity = cur.sunI;
+  const ce = Math.cos(cur.el); sun.position.set(W / 2 + Math.sin(cur.az) * ce * 48, Math.sin(cur.el) * 48, D / 2 + Math.cos(cur.az) * ce * 48);
+  hemi.color.setRGB(cur.sky[0], cur.sky[1], cur.sky[2]); hemi.groundColor.setRGB(cur.gnd[0], cur.gnd[1], cur.gnd[2]); hemi.intensity = cur.hemiI;
+  uGlow.value = cur.glow;
+  uLampCol.value.set(cur.lamp, cur.lamp * .663, cur.lamp * .353);
+  for (const h of lamps) h.material.opacity = Math.min(1, cur.lamp * .5);
+}
+
+/* ---------- camera ---------- */
+const CD = 52, cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 120);
+const camT = new THREE.Vector3(W / 2, 0, D / 2);
+let yaw = 0, yawT = 0, V = 18.5, VT = 18.5, aspect = 1;
+const minV = () => 9.5 / aspect;
+function camGoal(vv) { const f = clamp(1.45 - vv / 26, .4, .9); return [W / 2 + (player.x - W / 2) * f, D / 2 - 2.4 + (player.z - D / 2) * f * .6]; }
+function setCamera() {
+  const cp = Math.cos(PITCH), spn = Math.sin(PITCH), v = Math.max(V, minV());
+  cam.position.set(camT.x + Math.sin(yaw) * cp * CD, camT.y + spn * CD, camT.z + Math.cos(yaw) * cp * CD); cam.lookAt(camT);
+  cam.top = v / 2; cam.bottom = -v / 2; cam.right = v / 2 * aspect; cam.left = -cam.right; cam.updateProjectionMatrix(); cam.updateMatrixWorld();
+}
+
+/* ---------- passata finale: sfondo, antialias leggero, vignettatura ---------- */
+const rt = new THREE.WebGLRenderTarget(4, 4, { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBAFormat, stencilBuffer: false });
+rt.texture.encoding = THREE.sRGBEncoding; rt.texture.generateMipmaps = false;
+const postU = { tColor: { value: rt.texture }, uTexel: { value: new THREE.Vector2() }, uSpread: { value: 1 }, uAspect: { value: 1 }, uTime: { value: 0 }, uStars: { value: 0 }, uBgTop: { value: new THREE.Vector3() }, uBgBot: { value: new THREE.Vector3() } };
+const postMat = new THREE.ShaderMaterial({
+  uniforms: postU, depthTest: false, depthWrite: false,
+  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  fragmentShader: `
+    precision highp float;
+    uniform sampler2D tColor; uniform vec2 uTexel; uniform float uSpread, uAspect, uTime, uStars;
+    uniform vec3 uBgTop, uBgBot; varying vec2 vUv;
+    float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    vec4 tap(vec2 o){ vec4 s = texture2D(tColor, vUv + o * uSpread * uTexel); vec3 c = s.a > 0.001 ? min(s.rgb / s.a, vec3(1.0)) : vec3(0.0); return vec4(c * c * s.a, s.a); }
+    void main(){
+      vec4 acc = (tap(vec2(0.0)) * 2.0 + tap(vec2(0.375, 0.125)) + tap(vec2(-0.125, 0.375)) + tap(vec2(-0.375, -0.125)) + tap(vec2(0.125, -0.375))) / 6.0;
+      vec2 q = vUv - 0.5;
+      vec3 bg = mix(uBgBot, uBgTop, smoothstep(0.05, 0.95, vUv.y));
+      bg += mix(uBgBot, uBgTop, 0.5) * 0.35 * exp(-dot(q, q) * 5.0);
+      float h = hash(floor(vUv * vec2(uAspect, 1.0) * 170.0));
+      bg += uStars * step(0.991, h) * (0.55 + 0.45 * sin(uTime * 1.6 + h * 90.0)) * vec3(0.8, 0.88, 1.0) * 0.7;
+      vec3 col = acc.rgb + (1.0 - acc.a) * bg;
+      col *= 1.0 - 0.5 * smoothstep(0.42, 1.0, length(q * vec2(1.0, 1.12)) * 1.25);
+      gl_FragColor = vec4(sqrt(max(col, 0.0)), 1.0);
+    }`
+});
+const postScene = new THREE.Scene(), postCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+{ const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), postMat); m.frustumCulled = false; postScene.add(m); }
+
+let quality = 1, bw = 0, bh = 0, resMode = 'auto';
+function resize() {
+  const r = canvas.getBoundingClientRect(); if (r.width < 2 || r.height < 2) return;
+  const auto = resMode === 'auto', dpr = Math.min(window.devicePixelRatio || 1, 2) * (auto ? quality : 1); bw = Math.max(2, Math.round(r.width * dpr)); bh = Math.max(2, Math.round(r.height * dpr));
+  const ss = auto ? (dpr >= 1.5 ? 1.5 / dpr : 1.25) : +resMode; renderer.setSize(bw, bh, false); rt.setSize(Math.max(2, Math.round(bw * ss)), Math.max(2, Math.round(bh * ss)));
+  aspect = r.width / r.height; postU.uTexel.value.set(1 / rt.width, 1 / rt.height); postU.uAspect.value = aspect; postU.uSpread.value = Math.max(ss, .75);
+}
+new ResizeObserver(resize).observe(canvas); resize();
+
+/* ---------- input ---------- */
+const keys = new Set(); let stickX = 0, stickY = 0, soundOn = true;
+const rotate = (d) => { yawT = Math.round(yawT / (Math.PI / 4)) * (Math.PI / 4) + d * Math.PI / 4; };
+function cycleTod() { tod = (tod + 1) % TODS.length; $('bTod').textContent = 'Ora: ' + TODS[tod].label; }
+function toggleShadows() { sun.castShadow = !sun.castShadow; shadowHold = 3; $('bShadow').setAttribute('aria-pressed', sun.castShadow); }
+addEventListener('keydown', (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return; const k = e.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  if (e.repeat) return; keys.add(k);
+  if (k === 'z' || k === 'enter' || k === ' ') { if (document.activeElement && /^(BUTTON|A)$/.test(document.activeElement.tagName) && k !== 'z') return; advance(); }
+  else if (k === 'q') rotate(-1); else if (k === 'e') rotate(1); else if (k === 't') cycleTod(); else if (k === 'o') toggleShadows(); else if (k === 'escape') panel(null);
+});
+addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+addEventListener('blur', () => keys.clear());
+$('bRotL').onclick = () => rotate(-1); $('bRotR').onclick = () => rotate(1); $('bTod').onclick = cycleTod; $('bShadow').onclick = toggleShadows;
+$('bSnd').onclick = () => { soundOn = !soundOn; $('bSnd').setAttribute('aria-pressed', soundOn); };
+function panel(id) { for (const [p, b] of [['sheet', 'bSheet'], ['diag', 'bDiag']]) { const el = $(p), show = p === id && el.hidden; el.hidden = !show; $(b).setAttribute('aria-pressed', show); } }
+$('bSheet').onclick = () => panel('sheet'); $('bDiag').onclick = () => panel('diag');
+document.querySelectorAll('[data-close]').forEach((b) => { b.onclick = () => panel(null); });
+const yesNo = (b, on) => { b.setAttribute('aria-pressed', on); b.textContent = on ? 'Sì' : 'No'; };
+const resBtns = document.querySelectorAll('[data-res]');
+resBtns.forEach((b) => { b.onclick = () => { resMode = b.dataset.res; quality = 1; slow = 0; resBtns.forEach((o) => o.setAttribute('aria-pressed', o === b)); resize(); }; });
+$('dLight').onclick = (e) => { diag.flat = !diag.flat; allMats.forEach((m) => { m.needsUpdate = true; }); yesNo(e.currentTarget, !diag.flat); };
+$('bAct').onclick = () => advance(); $('dialog').onclick = () => advance();
+document.querySelector('.bar').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b && e.detail) b.blur(); });
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => { drag = { id: e.pointerId, x: e.clientX }; canvas.setPointerCapture(e.pointerId); canvas.focus({ preventScroll: true }); });
+canvas.addEventListener('pointermove', (e) => { if (!drag || drag.id !== e.pointerId) return; const dx = e.clientX - drag.x; drag.x = e.clientX; yawT -= dx * 0.007; yaw = yawT; });
+const endDrag = (e) => { if (drag && drag.id === e.pointerId) { drag = null; yawT = Math.round(yawT / (Math.PI / 4)) * (Math.PI / 4); } };
+canvas.addEventListener('pointerup', endDrag); canvas.addEventListener('pointercancel', endDrag);
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); VT = clamp(VT * Math.exp(e.deltaY * 0.0012), 6, 26); }, { passive: false });
+{ const st = $('stick'), kn = $('knob'); let id = null; const mv = (e) => { const r = st.getBoundingClientRect(); let x = (e.clientX - r.left - r.width / 2) / (r.width / 2), y = (e.clientY - r.top - r.height / 2) / (r.height / 2); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; } stickX = x; stickY = -y; kn.style.transform = 'translate(' + x * 34 + 'px,' + y * 34 + 'px)'; }; const up = () => { id = null; stickX = stickY = 0; kn.style.transform = ''; };
+  st.addEventListener('pointerdown', (e) => { id = e.pointerId; st.setPointerCapture(id); mv(e); }); st.addEventListener('pointermove', (e) => { if (e.pointerId === id) mv(e); }); st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up); }
+
+/* ---------- dialoghi ---------- */
+let dlg = null, actx = null, nearAct = null;
+function blip(f) { if (!soundOn) return; try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); const o = actx.createOscillator(), g = actx.createGain(), t = actx.currentTime; o.type = 'square'; o.frequency.value = f; g.gain.setValueAtTime(.025, t); g.gain.exponentialRampToValueAtTime(.0001, t + .05); o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t + .06); } catch (e) { soundOn = false; } }
+function showPage() { const page = dlg.lines[dlg.i], n = Math.min(page.length, Math.floor(dlg.n)); $('dText').textContent = page.slice(0, n); $('dMore').hidden = n < page.length; }
+function advance() {
+  if (!dlg) { if (!nearAct) return; const a = nearAct; dlg = { lines: a.lines, i: 0, n: reduceMotion ? 999 : 0, voice: a.voice || 330, last: 0 }; $('dWho').textContent = a.name; $('dialog').hidden = false; if (a.actor) { const dx = player.x - a.x, dz = player.z - a.z, l = Math.hypot(dx, dz) || 1; a.actor.fx = dx / l; a.actor.fz = dz / l; } showPage(); return; }
+  const page = dlg.lines[dlg.i];
+  if (dlg.n < page.length) dlg.n = page.length; else if (++dlg.i < dlg.lines.length) dlg.n = reduceMotion ? 999 : 0; else { dlg = null; $('dialog').hidden = true; return; }
+  showPage();
+}
+const baseHint = coarse ? 'Leva: cammina · <b>Z</b>: parla · trascina la scena per ruotarla' : '<b>WASD</b> o frecce: cammina · <b>Z</b>: parla · <b>Q</b> / <b>E</b> o trascina: ruota · <b>T</b>: ora · <b>O</b>: ombre · rotella: zoom';
+let hintState = null;
+function setHint(a) { const key = a ? a.label : ''; if (key === hintState) return; hintState = key; $('hint').innerHTML = a ? '<b>Z</b> · ' + a.label : baseHint; }
+
+/* ---------- pannello dei fogli sorgente ---------- */
+(function sheetPanel() {
+  const c = $('atlas'), gap = 6; c.width = AW; c.height = AH + gap + AC.h + gap + AT.h; const ctx = c.getContext('2d');
+  const show = (px, w, h, y, sw) => { ctx.putImageData(new ImageData(new Uint8ClampedArray(px), w, h), 0, y, 0, 0, sw || w, h); };
+  show(propsPx, AW, AH, 0); show(charsPx, AC.w, AC.h, AH + gap); show(tilesPx, AT.w, AT.h, AH + gap + AC.h + gap, AW);
+  $('sheetText').textContent = PLACED + ' oggetti e 6 figurine disegnati dal codice, senza fogli: ogni pixel nasce già con la sua profondità (case con le persiane che sporgono, tetti a falda, torri quadrate, scafi che si stringono verso la chiglia, chiome tornite). Anche il terreno viene dal codice: lastre, mattoni a spina di pesce, ciottoli, terra e assi sono mattonelle dipinte al caricamento, e il mare si ridipinge da solo. Nessun modello 3D.';
+})();
+
+/* ---------- ciclo di gioco ---------- */
+function blocked(x, z) {
+  const r = .26; if (x < r || z < r || x > W - r || z > D - r) return true;
+  for (const s of solids) if (x > s.x0 - r && x < s.x1 + r && z > s.z0 - r && z < s.z1 + r) return true;
+  for (const [a, b] of [[-.2, 0], [.2, 0], [0, -.16], [0, .16]]) if (isWater(x + a, z + b)) return true;
+  return false;
+}
+const SEQ = [0, 1, 0, 2], TAW = AC.w, TAH = AC.h;
+function poseActor(a, moving) {
+  const side = a.fx * Math.cos(yaw) - a.fz * Math.sin(yaw), toward = a.fx * Math.sin(yaw) + a.fz * Math.cos(yaw);
+  const dir = Math.abs(side) > Math.abs(toward) ? (side > 0 ? 'right' : 'left') : (toward > 0 ? 'down' : 'up'), list = FRAMES[dir];
+  const st = Math.floor(a.step), fr = list[!moving ? 0 : list.length === 3 ? SEQ[st % 4] : st % list.length], x0 = 1 + fr.c * (CW + 1), y0 = 1 + a.row * (CH + 1);
+  a.tex.repeat.set((fr.flip ? -1 : 1) * CW / TAW, CH / TAH); a.tex.offset.set((fr.flip ? x0 + CW : x0) / TAW, 1 - (y0 + CH) / TAH);
+  const y = groundY(a.x, a.z), sx = Math.sin(cur.az), sz = Math.cos(cur.az);
+  a.mesh.position.set(a.x, y, a.z); a.mesh.rotation.y = yaw;
+  a.caster.position.set(a.x, y, a.z); a.caster.rotation.y = cur.az;
+  a.probe.set(a.x + sx * .2, y, a.z + sz * .2); a.lampL.value = lampLight(a.x, y + .6, a.z, 0, 1, 0);
+}
+let shadowHold = 8;
+let last = performance.now(), time = 0, waterT = 0, waterTick = 0, intro = reduceMotion ? 1 : 0, statT = 0, frames = 0, fpsT = 0, fps = 60, slow = 0;
+const actorTris = actors.length * 2;
+// tempo GPU per frame, dove il browser lo espone: misura anche quando gli fps sono fermi al limite dello schermo
+const gl = renderer.getContext(); let tqExt = null, tq = null, tqWait = null, gpuMs = 0;
+try { tqExt = gl.createQuery ? gl.getExtension('EXT_disjoint_timer_query_webgl2') : null; } catch (e) { tqExt = null; }
+$('dNote').textContent = 'Il contatore non supera la frequenza dello schermo, di solito 60 fps. ' + (tqExt ? 'Il tempo GPU misura anche sotto quella soglia.' : 'Questo browser non espone il tempo GPU, quindi oltre quella soglia non si vede il margine.');
+function gpuPoll() { if (!tqExt || !tqWait) return; try { if (gl.getQueryParameter(tqWait, gl.QUERY_RESULT_AVAILABLE)) { if (!gl.getParameter(tqExt.GPU_DISJOINT_EXT)) { const v = gl.getQueryParameter(tqWait, gl.QUERY_RESULT) / 1e6; gpuMs = gpuMs ? gpuMs + (v - gpuMs) * .15 : v; } gl.deleteQuery(tqWait); tqWait = null; } } catch (e) { tqExt = null; } }
+function gpuBegin() { if (!tqExt || tqWait || $('diag').hidden) return; try { tq = gl.createQuery(); gl.beginQuery(tqExt.TIME_ELAPSED_EXT, tq); } catch (e) { tqExt = null; tq = null; } }
+function gpuEnd() { if (!tq) return; try { gl.endQuery(tqExt.TIME_ELAPSED_EXT); tqWait = tq; } catch (e) { tqExt = null; } tq = null; }
+const it1 = (v) => v.toLocaleString('it-IT', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+function frame(now) {
+  requestAnimationFrame(frame);
+  const real = (now - last) / 1000, dt = Math.min(.05, real); last = now; time += dt;
+  if (document.hidden) return;
+
+  // movimento relativo alla camera
+  let ix = stickX, iy = stickY;
+  if (keys.has('a') || keys.has('arrowleft')) ix -= 1; if (keys.has('d') || keys.has('arrowright')) ix += 1;
+  if (keys.has('w') || keys.has('arrowup')) iy += 1; if (keys.has('s') || keys.has('arrowdown')) iy -= 1;
+  const il = Math.hypot(ix, iy); let moving = false;
+  if (il > .15 && !dlg) {
+    const k = Math.min(1, il) / il, mx = (Math.cos(yaw) * ix - Math.sin(yaw) * iy) * k, mz = (-Math.sin(yaw) * ix - Math.cos(yaw) * iy) * k, spd = 3.5 * dt;
+    if (!blocked(player.x + mx * spd, player.z)) player.x += mx * spd;
+    if (!blocked(player.x, player.z + mz * spd)) player.z += mz * spd;
+    const l = Math.hypot(mx, mz); player.fx = mx / l; player.fz = mz / l; player.step += dt * 8; moving = true;
+  } else player.step = 0;
+
+  // interazioni vicine
+  nearAct = null; let best = 1e9;
+  for (const a of acts) { const d = Math.hypot(a.x - player.x, a.z - player.z); if (d < a.r && d < best) { best = d; nearAct = a; } }
+  setHint(dlg ? null : nearAct);
+  if (dlg) { const page = dlg.lines[dlg.i]; if (dlg.n < page.length) { dlg.n += dt * 42; const n = Math.floor(dlg.n); if (n !== dlg.last) { dlg.last = n; if (n % 2 === 0 && page[n - 1] !== ' ') blip(dlg.voice); showPage(); } } }
+
+  // camera
+  if (intro < 1) { intro = Math.min(1, intro + dt / 2.8); const e = 1 - Math.pow(1 - intro, 3); if (!drag) yaw = yawT + (1 - e) * -1.05; V = lerp(26, VT, e); }
+  else { if (!drag) yaw += (yawT - yaw) * (1 - Math.exp(-dt * 9)); V += (VT - V) * (1 - Math.exp(-dt * 8)); }
+  const vv = Math.max(V, minV()), [tx, tz] = camGoal(vv), kf = 1 - Math.exp(-dt * 5);
+  camT.x += (tx - camT.x) * kf; camT.z += (tz - camT.z) * kf;
+  setCamera();
+
+  animateLife(dt, time, vv);
+  for (const a of actors) poseActor(a, a === player && moving);
+  applyTod(1 - Math.exp(-dt * 2.2));
+  // la mappa delle ombre si ridisegna solo se si muove chi le proietta, o la luce
+  if (moving || dlg || Math.abs(cur.az - TODS[tod].az) + Math.abs(cur.el - TODS[tod].el) > 1e-4) shadowHold = 3;
+  if (shadowHold > 0) { shadowHold--; sun.shadow.needsUpdate = true; }
+
+  // acqua: la mattonella scorre piano, un pixel alla volta
+  waterT += dt; if (waterT > .45 && !reduceMotion) { waterT = 0; waterTick++; for (const i of waterIdx) putPx(i, waterColor(i, waterTick)); gCtx.putImageData(gImg, 0, 0); groundTex.needsUpdate = true; }
+
+  postU.uTime.value = time; postU.uStars.value = cur.stars; postU.uBgTop.value.set(cur.top[0], cur.top[1], cur.top[2]); postU.uBgBot.value.set(cur.bot[0], cur.bot[1], cur.bot[2]);
+
+  gpuPoll(); gpuBegin();
+  renderer.info.reset();
+  renderer.setRenderTarget(rt); renderer.setClearColor(0x000000, 0); renderer.clear(); renderer.render(scene, cam);
+  const calls = renderer.info.render.calls;
+  renderer.setRenderTarget(null); renderer.render(postScene, postCam);
+  gpuEnd();
+
+  // statistiche e qualità adattiva
+  frames++; fpsT += Math.min(real, 1); statT += Math.min(real, 1);
+  if (fpsT >= .5) { fps = frames / fpsT; frames = 0; fpsT = 0; if (fps < 40 && intro >= 1 && resMode === 'auto') { if (++slow >= 4 && quality > .55) { quality *= .8; slow = 0; resize(); } } else slow = 0; }
+  if (statT > .5) { statT = 0; $('stats').textContent = PLACED + ' sprite 2D · ' + tally.px.toLocaleString('it-IT') + ' pixel estrusi · ' + Math.round((staticTris + actorTris + 6) / 1000) + ' mila triangoli · ' + (calls + 1) + ' draw call · ' + Math.round(fps) + ' fps';
+    if (!$('diag').hidden) $('dRead').textContent = it1(1000 / fps) + ' ms per frame · ' + it1(fps) + ' fps\n' + (tqExt && gpuMs ? 'GPU ' + it1(gpuMs) + ' ms · ' : '') + 'disegno ' + rt.width + ' × ' + rt.height + ' px · ' + (calls + 1) + ' draw call'; }
+}
+
+function start(saved) {
+  if (saved && typeof saved.x === 'number' && !blocked(saved.x, saved.z)) { player.x = saved.x; player.z = saved.z; intro = 1; }
+  if (saved && typeof saved.tod === 'number') { tod = saved.tod % TODS.length; $('bTod').textContent = 'Ora: ' + TODS[tod].label; }
+  if (saved && typeof saved.yaw === 'number') yawT = yaw = saved.yaw;
+  const [tx, tz] = camGoal(Math.max(VT, minV())); camT.set(tx, 0, tz);
+  applyTod(1); setHint(null); setCamera();
+  requestAnimationFrame(frame);
+}
+const hot = window.claude && window.claude.hot;
+if (hot && hot.snapshot) hot.snapshot(() => ({ x: player.x, z: player.z, tod, yaw: yawT }));
+if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+window.__borgo = { blocked, player, acts, tally, staticTris, buildMs: Math.round(performance.now() - T0), view: (o) => { if (o.yaw !== undefined) yaw = yawT = o.yaw; if (o.V) V = VT = o.V; if (o.x !== undefined) { player.x = o.x; player.z = o.z; } if (o.tod !== undefined) { tod = o.tod; $('bTod').textContent = 'Ora: ' + TODS[tod].label; } shadowHold = 3; } };
+})();
+</script>
+
+</body></html>
