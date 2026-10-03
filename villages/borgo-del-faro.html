@@ -82,7 +82,7 @@ button[aria-pressed="true"]{color:var(--amber)}
     <div class="bar" role="toolbar" aria-label="Comandi della scena">
       <button id="bRotL" type="button" aria-label="Ruota a sinistra">⟲ Q</button>
       <button id="bRotR" type="button" aria-label="Ruota a destra">E ⟳</button>
-      <button id="bTod" type="button">Ora: giorno</button>
+      <button id="bTod" type="button">Ora: alba</button>
       <button id="bShadow" type="button" aria-pressed="true">Ombre</button>
       <button id="bSheet" type="button" aria-pressed="false">Sprite 2D</button>
       <button id="bSnd" type="button" aria-pressed="true">Suono</button>
@@ -1059,7 +1059,8 @@ const lamps = lampSpots.filter((p) => p.halo).map((p) => { const h = new THREE.S
 const lin = (h) => [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255].map((v) => v * v);
 const srgb = (h) => [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255];   // la nebbia si mescola dopo la codifica: colore così com'è
 const TODS = [
-  { label: 'giorno', sun: lin(0xffe4c8), sunI: 1.05, az: 1.25, el: .44, sky: lin(0xd2deea), gnd: lin(0x8c968a), hemiI: .95, glow: .35, lamp: .3, top: lin(0xa9bccd), bot: lin(0xeedccd), stars: 0, fog: srgb(0xdde2e4), fogN: 44, fogF: 118, mist: [1, 1, 1], mistA: .45 },
+  { label: 'alba', sun: lin(0xffe4c8), sunI: 1.05, az: 1.25, el: .44, sky: lin(0xd2deea), gnd: lin(0x8c968a), hemiI: .95, glow: .35, lamp: .3, top: lin(0xa9bccd), bot: lin(0xeedccd), stars: 0, fog: srgb(0xdde2e4), fogN: 44, fogF: 118, mist: [1, 1, 1], mistA: .45 },
+  { label: 'giorno', sun: lin(0xfff2dc), sunI: 1.1, az: -.6, el: .85, sky: lin(0xd2e2f4), gnd: lin(0x8c9a84), hemiI: .7, glow: 0, lamp: 0, top: lin(0x5f94cc), bot: lin(0xd8e8f2), stars: 0, fog: srgb(0xdce6ee), fogN: 70, fogF: 220, mist: [1, 1, 1], mistA: .12 },
   { label: 'tramonto', sun: lin(0xff9a5a), sunI: 1.4, az: -1.2, el: .34, sky: lin(0xc9a3c4), gnd: lin(0x7a5a52), hemiI: .62, glow: .85, lamp: .9, top: lin(0x3e3a6e), bot: lin(0xe8925a), stars: .15, fog: srgb(0xd29a86), fogN: 50, fogF: 170, mist: [1, .82, .7], mistA: .32 },
   { label: 'notte', sun: lin(0x9db4ff), sunI: .5, az: .6, el: .9, sky: lin(0x4a5aa8), gnd: lin(0x262c40), hemiI: .48, glow: 1, lamp: 1.5, top: lin(0x050812), bot: lin(0x16213e), stars: 1, fog: srgb(0x1a2440), fogN: 50, fogF: 160, mist: [.55, .62, .8], mistA: .22 },
 ];

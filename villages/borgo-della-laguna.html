@@ -1189,7 +1189,7 @@ put(sp.stendino, 5.8, 5.2, { y: 2.05 });                                     // 
 
 // ponti: un profilo tirato in profondità, più due parapetti; il piano di calpestio segue i gradini
 function bridge(cx, cz, alongZ) {
-  const o = { y: -3 * P, rot: alongZ ? 1 : 0 }, p = put(sp.ponte, cx, cz, o), r = 12 * P, half = 50 * P, lane = .55;
+  const o = { y: -3 * P + .03, rot: alongZ ? 1 : 0 }, p = put(sp.ponte, cx, cz, o), r = 12 * P, half = 50 * P, lane = .55;
   if (alongZ) { put(sp.parapetto, p.x + r, p.z, o); put(sp.parapetto, p.x - r, p.z, o); BRIDGES.push({ x0: p.x - lane, x1: p.x + lane, z0: p.z - half, z1: p.z + half, ax: 'z', a0: p.z - half }); solid(p.x + .68, p.z - half, p.x + .82, p.z + half); solid(p.x - .82, p.z - half, p.x - .68, p.z + half); }
   else { put(sp.parapetto, p.x, p.z + r, o); put(sp.parapetto, p.x, p.z - r, o); BRIDGES.push({ x0: p.x - half, x1: p.x + half, z0: p.z - lane, z1: p.z + lane, ax: 'x', a0: p.x - half }); solid(p.x - half, p.z + .68, p.x + half, p.z + .82); solid(p.x - half, p.z - .82, p.x + half, p.z - .68); }
   return p;

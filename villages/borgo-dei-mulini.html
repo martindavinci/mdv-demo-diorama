@@ -82,7 +82,7 @@ button[aria-pressed="true"]{color:var(--amber)}
     <div class="bar" role="toolbar" aria-label="Comandi della scena">
       <button id="bRotL" type="button" aria-label="Ruota a sinistra">⟲ Q</button>
       <button id="bRotR" type="button" aria-label="Ruota a destra">E ⟳</button>
-      <button id="bTod" type="button">Ora: giorno</button>
+      <button id="bTod" type="button">Ora: alba</button>
       <button id="bShadow" type="button" aria-pressed="true">Ombre</button>
       <button id="bSheet" type="button" aria-pressed="false">Sprite 2D</button>
       <button id="bSnd" type="button" aria-pressed="true">Suono</button>
@@ -1083,7 +1083,8 @@ const lamps = lampSpots.filter((p) => p.halo).map((p) => { const h = new THREE.S
 /* ---------- ore del giorno ---------- */
 const lin = (h) => [(h >> 16 & 255) / 255, (h >> 8 & 255) / 255, (h & 255) / 255].map((v) => v * v);
 const TODS = [
-  { label: 'giorno', sun: lin(0xffdcaa), sunI: 1.32, az: 1.1, el: .52, sky: lin(0xd6e2ff), gnd: lin(0x98a86a), hemiI: .8, glow: .3, lamp: 0, top: lin(0x5e9ad6), bot: lin(0xf6d8a8), stars: 0 },
+  { label: 'alba', sun: lin(0xffdcaa), sunI: 1.32, az: 1.1, el: .52, sky: lin(0xd6e2ff), gnd: lin(0x98a86a), hemiI: .8, glow: .3, lamp: 0, top: lin(0x5e9ad6), bot: lin(0xf6d8a8), stars: 0 },
+  { label: 'giorno', sun: lin(0xfff2dc), sunI: 1.1, az: -.6, el: .85, sky: lin(0xd6e4ff), gnd: lin(0x98a86a), hemiI: .65, glow: 0, lamp: 0, top: lin(0x4f90dc), bot: lin(0xd8eaf8), stars: 0 },
   { label: 'tramonto', sun: lin(0xff8f4a), sunI: 1.5, az: -1.2, el: .36, sky: lin(0xd8a0c8), gnd: lin(0xb06a4a), hemiI: .66, glow: .85, lamp: .9, top: lin(0x3a2a66), bot: lin(0xe27a3a), stars: .15 },
   { label: 'notte', sun: lin(0x9db4ff), sunI: .55, az: .7, el: .9, sky: lin(0x5a66c8), gnd: lin(0x3a2c4a), hemiI: .5, glow: 1, lamp: 1.5, top: lin(0x060818), bot: lin(0x1c2452), stars: 1 },
 ];
