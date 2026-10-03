@@ -500,7 +500,8 @@ CHARS.forEach((ch, row) => {
       if (k === '.') return; const c = pal[k]; if (c === undefined) return;
       const q = ((y0 + j) * AC.w + x0 + i) * 4; charsPx[q] = c >> 16 & 255; charsPx[q + 1] = c >> 8 & 255; charsPx[q + 2] = c & 255; charsPx[q + 3] = 255;
     }));
-    if (ch.tool) ch.tool((x, y, c) => { if (x < 0 || y < 0 || x >= CW || y >= CH) return; const q = ((y0 + y) * AC.w + x0 + x) * 4; charsPx[q] = c >> 16 & 255; charsPx[q + 1] = c >> 8 & 255; charsPx[q + 2] = c & 255; charsPx[q + 3] = 255; }, view, step);
+    if (ch.tool) ch.tool((x, y, c, over) => { if (x < 0 || y < 0 || x >= CW || y >= CH) return; const q = ((y0 + y) * AC.w + x0 + x) * 4; if (!over && charsPx[q + 3]) return;   // gli attrezzi stanno dietro alla figurina, se non chiedono di stare sopra
+      charsPx[q] = c >> 16 & 255; charsPx[q + 1] = c >> 8 & 255; charsPx[q + 2] = c & 255; charsPx[q + 3] = 255; }, view, step);
   });
 });
 
@@ -698,7 +699,7 @@ function put(s, x, z, o) {
 
 /* ---------- terreno: una texture di pixel dipinta dal codice; ogni pixel ha il suo tipo e la sua quota ---------- */
 const GT = V.ground.types;
-const gType = new Uint8Array(PXW * PXD), gH = new Int16Array(PXW * PXD), gFoam = new Uint8Array(PXW * PXD);
+const gType = new Uint8Array(PXW * PXD), gH = new Int16Array(PXW * PXD), gFoam = new Uint8Array(PXW * PXD), gGlow = new Uint8Array(PXW * PXD);
 const gCan = document.createElement('canvas'); gCan.width = PXW; gCan.height = PXD;
 const gCtx = gCan.getContext('2d'), gImg = gCtx.createImageData(PXW, PXD);
 const putPx = (i, c) => { gImg.data[i * 4] = c >> 16 & 255; gImg.data[i * 4 + 1] = c >> 8 & 255; gImg.data[i * 4 + 2] = c & 255; gImg.data[i * 4 + 3] = 255; };
@@ -718,7 +719,8 @@ const waterColor = (i, tick) => { const x = i % PXW, z = (i / PXW) | 0; return g
     if (GT[t].water) { waterIdx.push(i); if (near(x, z, (k) => !GT[k].water) && hash2(x * 3, z * 7) < .7) gFoam[i] = 1; continue; }
     putPx(i, GT[t].color(x, z, (k) => near(x, z, (q) => q === k), i));
   }
-  if (G.post) G.post({ putPx, gType, gH, gFoam, near: (x, z, k) => near(x, z, (q) => q === k) });
+  if (G.post) G.post({ putPx, gType, gH, gFoam, gGlow, near: (x, z, k) => near(x, z, (q) => q === k) });
+  if (G.glow) for (let z = 0; z < PXD; z++) for (let x = 0; x < PXW; x++) { const i = z * PXW + x; if (!gGlow[i]) gGlow[i] = Math.round(clamp(G.glow(x, z, gType[i]) || 0, 0, 1) * 255); }
   for (const i of waterIdx) putPx(i, waterColor(i, 0));
   gCtx.putImageData(gImg, 0, 0);
 })();
@@ -743,7 +745,8 @@ sun.target.position.set(W / 2, 0, D / 2); scene.add(sun); scene.add(sun.target);
 
 const nearest = (t) => { t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; };
 const groundTex = nearest(new THREE.CanvasTexture(gCan)); groundTex.flipY = false; groundTex.encoding = THREE.sRGBEncoding;
-const gPack = new Uint8Array(PXW * PXD * 2);   // per pixel: luce dei lampioni (secondo canale)
+const gPack = new Uint8Array(PXW * PXD * 2);   // per pixel: bagliore notturno del suolo, luce dei lampioni
+for (let i = 0; i < PXW * PXD; i++) gPack[i * 2] = gGlow[i];
 const heightTex = nearest(new THREE.DataTexture(gPack, PXW, PXD, THREE.LuminanceAlphaFormat, THREE.UnsignedByteType)); heightTex.unpackAlignment = 1; heightTex.needsUpdate = true;
 const atlasTex = nearest(new THREE.DataTexture(atlasPx, AW2, AH, THREE.RGBAFormat, THREE.UnsignedByteType)); atlasTex.encoding = THREE.sRGBEncoding; atlasTex.needsUpdate = true;
 const auxTex = nearest(new THREE.DataTexture(auxPx, AW2, AH, THREE.RGBAFormat, THREE.UnsignedByteType));
@@ -768,6 +771,7 @@ function voxelMaterial(kind, o) {
     let f = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vWPos; varying vec3 vWNrm; uniform mat4 uShadowMat; uniform float uGlow; uniform vec3 uLampCol;\n' + (ground ? 'uniform sampler2D uHeightTex;' : sprite ? 'uniform vec3 uProbe; uniform vec2 uRow; uniform float uLampL;' : slab ? 'uniform sampler2D uAux; varying float vLayer; varying float vLamp;' : 'varying vec4 vCol; varying float vLamp;'));
     f = f.replace('void main() {', 'void main() {\n' + (ground ? 'float vxLamp = texture2D(uHeightTex, vUv).a * 2.0;' : sprite ? 'float vxLamp = uLampL;' : slab ? LAYER_TEST + ' float vxLamp = vLamp * 2.0;' : 'float vxLamp = vLamp * 2.0;'));
     if (slab) f = f.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * vxA.b * uGlow * 1.5;');
+    else if (ground) f = f.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * texture2D(uHeightTex, vUv).r * uGlow * 1.6;');
     else if (!ground && !sprite) f = f.replace('#include <color_fragment>', '#include <color_fragment>\nvec3 vxBase = pow(vCol.rgb, vec3(2.2)); diffuseColor.rgb *= vxBase;')
       .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += vxBase * vCol.a * uGlow * 1.5;');
     const coord = sprite
@@ -823,6 +827,7 @@ function actor(row, x, z, o) {
   const gl = g.clone(), n = gl.attributes.normal; for (let i = 0; i < n.count; i++) n.setXYZ(i, 0, 1, 0);   // normale verso l'alto: la luce non cambia ruotando la visuale
   a.mesh = new THREE.Mesh(gl, voxelMaterial('sprite', { map: a.tex, probe: a.probe, lampL: a.lampL, row: new THREE.Vector2(SPR_Y * a.scale * P, a.scale * P) }));
   a.mesh.receiveShadow = true; a.mesh.scale.set(a.scale, a.scale * SPR_Y, 1);
+  if (CHARS[row].ghost) { a.mesh.material.transparent = true; a.mesh.material.opacity = .62; a.mesh.material.depthWrite = false; a.mesh.renderOrder = 2; }
   a.caster = new THREE.Mesh(g, casterMat); a.caster.castShadow = true; a.caster.scale.setScalar(a.scale);
   a.caster.customDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: a.tex, alphaTest: .5 });
   scene.add(a.mesh); scene.add(a.caster); actors.push(a); return a;
@@ -848,7 +853,7 @@ const pFire = thing('falo', 21.8, 17.2, .45, .35); spot(pFire.x, .6, pFire.z, 3,
 thing('barili', 23.8, 16.2, .9, .4); thing('barili', 17.6, 14.4, .9, .4, { flip: true });
 const pAnc = thing('ancora', 26.8, 19.6, .5, .2);
 // la scogliera: grotta e tesoro ai piedi, cannoni e vedetta in cima
-const pGrotta = thing('grotta', 9.6, cliffEdge(9.6) + .45, 1.7, .35);
+const pGrotta = thing('grotta', 9.6, cliffEdge(9.6) + .3, 1.7, .35);   // la schiena dentro la scogliera
 const pTes = thing('forziere', 9.9, 7.6, .8, .45); spot(pTes.x, .5, pTes.z + .2, 1.8, .9);
 const pPapp = thing('pappagallo', 12.8, 7.8, .2, .2);
 const pCan = thing('cannone', 16, 4.2, 1.1, .45); thing('cannone', 23, 4.4, 1.1, .45);

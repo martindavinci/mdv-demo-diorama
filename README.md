@@ -1,6 +1,6 @@
 # Borghi in diorama
 
-Twenty-two pixel-art villages you can walk around in the browser. There is no 3D model anywhere: every
+Thirty pixel-art villages you can walk around in the browser. There is no 3D model anywhere: every
 house, tree and lamp post is a flat sprite, and each of its pixels is given a depth.
 
 **Play them at [martindavinci.github.io/mdv-demo-diorama](https://martindavinci.github.io/mdv-demo-diorama/)**
@@ -29,6 +29,14 @@ house, tree and lamp post is a flat sprite, and each of its pixels is given a de
 - [Isola nel Cielo](https://martindavinci.github.io/mdv-demo-diorama/villages/isola-nel-cielo.html) — dawn. A floating island: cottages, a wind tower, glowing crystals, a stream that pours off the edge and an airship at the dock.
 - [Covo dei Pirati](https://martindavinci.github.io/mdv-demo-diorama/villages/covo-dei-pirati.html) — night. A sandy cove with a tavern, a ship at the jetty, a wreck, a campfire and a treasure under the cliff.
 - [Base su Marte](https://martindavinci.github.io/mdv-demo-diorama/villages/base-su-marte.html) — blue sunset. Habitat domes, a greenhouse, a rocket on its pad and a crater in the red dust.
+- [Borgo degli Gnomi](https://martindavinci.github.io/mdv-demo-diorama/villages/borgo-degli-gnomi.html) — dawn. Hillock houses with round doors, toadstool lamps, giant pumpkins, a water mill and a fairy ring that glows at night.
+- [Città dei Maghi](https://martindavinci.github.io/mdv-demo-diorama/villages/citta-dei-maghi.html) — night. Crooked starry-roofed towers, an academy, an observatory floating over the square and a glowing magic circle.
+- [Borgo sull’Albero](https://martindavinci.github.io/mdv-demo-diorama/villages/borgo-sull-albero.html) — sunset. Huts on three plank decks around a giant tree, stairs, hanging lanterns and a stream in the undergrowth.
+- [Rocca del Drago](https://martindavinci.github.io/mdv-demo-diorama/villages/rocca-del-drago.html) — night. A dragon asleep around the tower of a ruined castle, glowing gold, and a village with lit windows below the cliff.
+- [Villaggio dei Ghiacci Eterni](https://martindavinci.github.io/mdv-demo-diorama/villages/villaggio-dei-ghiacci.html) — dawn. A crystal palace, ice-dome houses, crystal trees, reindeer and a frozen lake with a skating spirit.
+- [Porto delle Fate](https://martindavinci.github.io/mdv-demo-diorama/villages/porto-delle-fate.html) — dawn. Houses in a teapot, a cup, a tulip and an acorn, lily pads across the river, leaf and walnut boats.
+- [Mercato dei Golem](https://martindavinci.github.io/mdv-demo-diorama/villages/mercato-dei-golem.html) — day. A sandstone canyon with carved houses, a giant hourglass, market rugs and clay golems carrying loads.
+- [Abbazia dei Fantasmi](https://martindavinci.github.io/mdv-demo-diorama/villages/abbazia-dei-fantasmi.html) — night. A ruined abbey in the fog, a cemetery with grave candles and four friendly, see-through ghosts.
 
 From Borgo di Leonardo on, every sprite and every ground tile is drawn by code at load.
 

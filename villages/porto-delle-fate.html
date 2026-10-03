@@ -1,5 +1,5 @@
 <!doctype html><html lang="it"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>Base su Marte</title>
+<title>Porto delle Fate</title>
 <link rel="stylesheet" href="../vendor/fonts/fonts.css">
 <style>
 /* Layout: scena a tutto schermo; HUD agli angoli, dialogo in basso al centro, comandi touch ai lati */
@@ -71,18 +71,18 @@ button[aria-pressed="true"]{color:var(--amber)}
 </style>
 
 <div id="stage">
-  <canvas id="gl" tabindex="0" aria-label="Base con cupole e razzo sulla polvere rossa di Marte: cammina con WASD, parla con Z, ruota con Q ed E"></canvas>
+  <canvas id="gl" tabindex="0" aria-label="Porto delle fate con case nelle teiere e nei fiori: cammina con WASD, parla con Z, ruota con Q ed E"></canvas>
 
   <div class="top">
     <div class="brand">
       <a class="back" href="../index.html">← tutti i borghi</a>
-      <h1>Base su Marte</h1>
+      <h1>Porto delle Fate</h1>
       <p id="stats">Estrusione dei pixel in corso…</p>
     </div>
     <div class="bar" role="toolbar" aria-label="Comandi della scena">
       <button id="bRotL" type="button" aria-label="Ruota a sinistra">⟲ Q</button>
       <button id="bRotR" type="button" aria-label="Ruota a destra">E ⟳</button>
-      <button id="bTod" type="button">Ora: tramonto</button>
+      <button id="bTod" type="button">Ora: alba</button>
       <button id="bShadow" type="button" aria-pressed="true">Ombre</button>
       <button id="bSheet" type="button" aria-pressed="false">Sprite 2D</button>
       <button id="bSnd" type="button" aria-pressed="true">Suono</button>
@@ -315,139 +315,110 @@ function figure(o, view, step) {
   return rows.slice(0, CH);
 }
 
-/* ---------- Base su Marte: cupole abitative, la serra, il razzo sulla piazzola, un cratere, la mesa a strati ---------- */
-const MESA = { h: 26 }, RAMP = { x0: 5.4, x1: 7.2 };
-const mesaEdge = (xu) => 5.8 + (vn(xu / 5, 1, 7) - .5) * 1.4 + Math.max(0, xu - 30) * .08;
-function rampH(xu, zu) { if (xu < RAMP.x0 || xu > RAMP.x1) return null; const e = mesaEdge((RAMP.x0 + RAMP.x1) / 2), t = (e + 2.6 - zu) / 4; if (t <= 0 || t >= 1) return null; return clamp(Math.round(t * MESA.h / 2) * 2, 0, MESA.h); }
-const CRATER = { x: 33.2, z: 21.4, r: 3.6 }, PAD = { x: 9.6, z: 20.2, r: 3.4 };
-const DUST = 0, ROCKY = 1, TRACK = 2, PADT = 3, RIM = 4, BOWL = 5, MESAT = 6, RAMPT = 7;
+/* ---------- Porto delle Fate: case nelle teiere e nei fiori, il fiume con le ninfee per passare, barche di foglia e di noce ---------- */
+const FT_RIVER = (xu) => 17.6 + Math.sin(xu * .26) * 1.6;
+const FT_PADS = [[9.6, -.78], [9.6, 0], [9.6, .78], [29.2, -.78], [29.2, 0], [29.2, .78]];   // di traverso al fiume, dove arrivano i sentieri di petali
+const FT_MOSS = 0, FT_PETAL = 1, FT_RIVER_T = 2, FT_PAD = 3, FT_SAND = 4, FT_CLOVER = 5;
+function ftPad(xu, zu) { for (const [px, dz] of FT_PADS) if (Math.hypot(xu - px, zu - FT_RIVER(px) - dz) < .62) return true; return false; }
 
 const V = {
-  start: [20, 18.6], view: 23, camNorth: 2.6, step: 3.5,
-  tod: { start: 'tramonto', set: {
-    alba: { sun: 0xd8d0e8, sunI: .8, top: 0x2a2a48, bot: 0x8a7aa8, sky: 0x9a88a8, gnd: 0x6a4a40, stars: .4 },
-    giorno: { sun: 0xfff0dc, sunI: 1.05, az: -.6, el: .8, top: 0xb8885e, bot: 0xe8c8a0, sky: 0xe0b890, gnd: 0xa86a48, hemiI: .62 },
-    tramonto: { sun: 0xc8daff, sunI: 1.0, az: -1.25, el: .26, top: 0x241f3c, bot: 0x6a9ae0, sky: 0x8aa2d0, gnd: 0x6a4a48, hemiI: .5, glow: .8, lamp: .9, stars: .35 },
-    notte: { sun: 0xb8b0d8, sunI: .4, top: 0x05040a, bot: 0x1a1020, sky: 0x6a6a90, gnd: 0x3a2428 },
-  } },
-  sheetText: 'disegni e 5 figurine nati dal codice, senza fogli: cupole a mezza sfera con i pannelli, la serra di vetro che si accende, moduli a tubo, pannelli solari inclinati, l’antenna, il rover, il razzo. Il terreno è dipinto dal codice: regolite rossa, dune, tracce del rover, la piazzola, il cratere e la mesa a strati.',
-  sheetCrop: [6, 15],
-  halo: 0xffc070,
-  life: [{ kind: 'motes', n: 90, color: 0xd89a6a, size: 2, area: [-4, 0, 44, 28], y0: .1, y1: 2.6, wind: [.9, .15], opacity: .55, night: true }],
+  start: [20, 22.6], view: 22, camNorth: 2.6, step: 3.5,
+  tod: { start: 'alba', set: { alba: { sun: 0xffc8d0, sunI: .95, az: 1.3, el: .3, top: 0x7a86c8, bot: 0xfcd0d8, sky: 0xf0d8f0, gnd: 0x9ab88a, hemiI: .66, stars: .2 }, giorno: { top: 0x6aa8e8, bot: 0xf0f6ff } } },
+  sheetText: 'disegni e 5 figurine nati dal codice, senza fogli: case nella teiera, nella tazza, nel tulipano e nella ghianda, margherite giganti, gocce di rugiada che si accendono, barche di foglia e di guscio di noce, una lumaca. Il terreno è dipinto dal codice: muschio, sentieri di petali, il fiume e le ninfee per attraversarlo.',
+  sheetCrop: [6, 14],
+  halo: 0xffd0f0,
+  life: [{ kind: 'fireflies', n: 90, color: 0xfff0a0, size: 2, area: [1, 1, 39, 27], y0: .2, y1: 2.6 }, { kind: 'motes', n: 70, color: 0xffffff, size: 3, area: [-2, 12, 42, 24], y0: .1, y1: 1.2, wind: [.2, .02], opacity: .35 }],
   ground: {
     types: [
-      { name: 'regolite', h: 0, color(x, z) { const v = vn(x / 14, z / 14, 61), rip = Math.sin((x * .35 + z * .9) + vn(x / 30, z / 30, 62) * 6); let c = mix(0xb0603a, 0xc8764a, v); if (rip > .85) c = shade(c, 1.08); else if (rip < -.85) c = shade(c, .9); if (hsh(x, z, 63) < .03) c = 0x7a3e28; return c; } },
-      { name: 'sassi', h: 0, color(x, z) { const v = vn(x / 6, z / 6, 64); let c = mix(0x8a4a30, 0xa45a3a, v); if (hsh(x >> 1, z >> 1, 65) < .2) c = 0x5a3428; return c; } },
-      { name: 'tracce', h: 0, color(x, z) { const c = jit(0x9a5234, x >> 1, z >> 1, 66, .08); return (Math.floor(x / 3) + Math.floor(z / 3)) % 2 ? c : shade(c, .85); } },
-      { name: 'piazzola', h: 2, color(x, z) { const dx = x / PPU - PAD.x, dz = z / PPU - PAD.z, d = Math.hypot(dx, dz); if (Math.abs(d - 2.6) < .12 || (Math.abs(dx) < .12 && Math.abs(dz) < 1.4) || (Math.abs(dz) < .12 && Math.abs(dx) < 1.4)) return 0xe8c040; return jit((x >> 4) % 2 === (z >> 4) % 2 ? 0x9a948c : 0x8a847c, x >> 4, z >> 4, 67, .04); } },
-      { name: 'orlo', h: 4, color(x, z) { return jit(mix(0xa45a3a, 0xc07048, vn(x / 5, z / 5, 68)), x >> 1, z >> 1, 69, .1); } },
-      { name: 'cratere', h: -6, color(x, z) { const v = vn(x / 8, z / 8, 70); let c = mix(0x7a3a26, 0x96503a, v); if (hsh(x, z, 71) < .05) c = 0x5a2c1e; return c; } },
-      { name: 'mesa', h: 0, color(x, z) { const v = vn(x / 10, z / 10, 72); let c = mix(0x9a5034, 0xb46440, v); if (hsh(x, z, 73) < .06) c = 0x6a3424; return c; } },
-      { name: 'rampa', h: 0, color(x, z) { const s = hAt(x, z); if (hAt(x, z - 1) > s) return 0x6a3a28; return jit(0x9a5a3e, x >> 2, z >> 2, 74, .06); } },
+      { name: 'muschio', h: 0, color(x, z) { const v = vn(x / 9, z / 9, 61), f = hsh(x, z, 62); let c = mix(0x7ab86a, 0x8cc87a, v); c = shade(c, .94 + vn(x / 3, z / 3, 63) * .12); if (f < .02) c = [0xffffff, 0xffd0e8, 0xfff0a0, 0xd8c0ff][Math.floor(hsh(x, z, 64) * 4)]; return c; } },
+      { name: 'petali', h: 0, color(x, z) { const k = Math.floor(x / 7) * 7 + Math.floor(z / 7) * 13, f = hsh(x, z, 65); if (Math.hypot((x % 7) - 3, (z % 7) - 3) > 3.4) return 0xe8c8b0; return jit([0xf8c0d8, 0xf0a8c8, 0xfcd8e8, 0xf8e0a8][k % 4], x >> 1, z >> 1, 66, .06); } },
+      { name: 'fiume', h: -3, water: true },
+      { name: 'ninfea', h: 0, color(x, z) { const xu = x / PPU, d = FT_PADS.reduce((m, [px, dz]) => Math.min(m, Math.hypot(xu - px, z / PPU - FT_RIVER(px) - dz)), 9), a = Math.atan2(z / PPU, xu); return d > .54 ? 0x4a8a3a : (Math.abs(((a * 5) % 1 + 1) % 1 - .5) < .06 ? 0x6aaa4a : jit(0x5aa848, x >> 1, z >> 1, 67, .08)); } },
+      { name: 'sabbia', h: 0, color(x, z) { return jit(mix(0xe8dcc0, 0xf0e6cc, vn(x / 6, z / 6, 68)), x >> 1, z >> 1, 69, .05); } },
+      { name: 'trifoglio', h: 0, color(x, z) { const f = hsh(x, z, 70); return f < .12 ? 0xffffff : jit(0x6aaa5a, x, z, 71, .14); } },
     ],
     classify(x, z, xu, zu) {
-      if (rampH(xu, zu) !== null) return RAMPT;
-      if (zu < mesaEdge(xu)) return MESAT;
-      const dc = Math.hypot(xu - CRATER.x, (zu - CRATER.z) * 1.15) + (vn(x / 7, z / 7, 2) - .5) * .5;
-      if (dc < CRATER.r - .9) return BOWL;
-      if (dc < CRATER.r + .3) return RIM;
-      if (Math.hypot(xu - PAD.x, zu - PAD.z) < PAD.r) return PADT;
-      if (Math.abs(zu - 15.6 - Math.sin(xu * .25) * .5) < .5 && xu > 7 && xu < 37 || Math.abs(xu - 20 - Math.sin(zu * .3) * .4) < .5 && zu > 8 && zu < 27) return TRACK;
-      if (vn(x / 16, z / 16, 5) > .66) return ROCKY;
-      return DUST;
+      if (ftPad(xu, zu)) return FT_PAD;
+      const rz = FT_RIVER(xu);
+      if (Math.abs(zu - rz) < 1.15) return FT_RIVER_T;
+      if (Math.abs(zu - rz) < 1.55) return FT_SAND;
+      if (Math.abs(zu - 9.8 - Math.sin(xu * .4) * .5) < .55 || Math.abs(zu - 24.4 - Math.sin(xu * .3) * .4) < .55 || Math.abs(xu - 9.6) < .5 && zu < rz || Math.abs(xu - 29.2) < .5 && zu > rz || Math.abs(xu - 29.2) < .5 && zu < rz && zu > 9.8 || Math.abs(xu - 9.6) < .5 && zu > rz && zu < 24.4) return FT_PETAL;
+      if (vn(x / 13, z / 13, 9) > .66) return FT_CLOVER;
+      return FT_MOSS;
     },
-    height(x, z, t, xu, zu) { if (t === RAMPT) return rampH(xu, zu); if (t === MESAT) return MESA.h; if (t === BOWL) return -6; if (t === RIM) { const dc = Math.hypot(xu - CRATER.x, (zu - CRATER.z) * 1.15); return dc < CRATER.r - .4 ? 2 : 4; } return t === PADT ? 2 : 0; },
-    water() { return 0 },
-    wall(t, x, z, y, top) {
-      if (t === PADT) return y > top - 1 ? 0xa8a29a : 0x6a6660;
-      if (t === MESAT || t === RAMPT) { const yy = y + Math.round((vn((x + z) / 17, 1, 81) - .5) * 5); return [0xb46440, 0x9a5034, 0xc8865a, 0x7a3e2a, 0xa85c3c][((Math.floor((yy + 40) / 4) % 5) + 5) % 5]; }
-      return y > top - 2 ? 0xa45a3a : jit(0x8a4a30, (x + z) >> 2, y >> 1, 82, .08);
-    },
-    edge(t, k, y, top) { if (y > top - 2) return t === MESAT ? 0x9a5034 : 0xb0603a; const yy = y + Math.round((vn(k / 15, 1, 83) - .5) * 7); return [0xa85c3c, 0x8a4a30, 0xc07048, 0x6a3424, 0x9a5034, 0x7a3e2a][((Math.floor((yy + 80) / 6) % 6) + 6) % 6]; },
-    bottom: (k) => -34 - Math.round(vn(k / 9, 1, 4) * 8),
+    height(x, z, t) { return t === FT_RIVER_T ? -3 : t === FT_PAD ? 1 : 0; },
+    glow(x, z, t) { return t === FT_MOSS && hsh(x, z, 62) < .008 ? 1 : 0; },
+    water(x, z, tick) { const v = Math.sin((x * .6 + z * .2) * .5 - tick * 1.0) + Math.sin((x - z) * .35 + tick * .6) * .6; return v > 1.1 ? 0xc8f0f0 : v < -.9 ? 0x4aa8b8 : 0x7ac8d0; },
+    foam: 0xf0fcfc,
+    wall(t, x, z, y, top) { if (t === FT_PAD) return 0x3a7a2a; return y > top - 2 ? 0x7ab86a : jit(0x8a6a4a, (x + z) >> 2, y >> 1, 81, .1); },
+    edge(t, k, y, top) { if (t === FT_RIVER_T) return y > -5 ? 0x7ac8d0 : 0x4a8a98; if (y > top - 2) return t === FT_SAND ? 0xe8dcc0 : 0x7ab86a; const yy = y + Math.round((vn(k / 13, 1, 82) - .5) * 6); return yy > -8 ? 0x8a6a4a : yy > -20 ? (hsh(k >> 2, y >> 2, 83) < .1 ? 0xd8c0e8 : 0x7a5a40) : 0x5a4430; },
+    bottom: (k) => -30 - Math.round(vn(k / 9, 1, 4) * 6),
   },
 };
 
-/* ---------- ritagli ---------- */
-patch('tex_panel', 'Pannello solare', (x, y) => (x % 4 === 3 || y % 4 === 3) ? 0x8a9aaa : jit(0x1e2e5a, x >> 2, y >> 2, 3, .1));
-patch('tex_hull', 'Lamiera', (x, y) => (x % 8 === 7 || y % 8 === 7) ? 0xa8acb0 : jit(0xd8dadc, x >> 3, y >> 3, 5, .04));
-
-/* ---------- cupola abitativa: mezza sfera a pannelli, finestre accese, camera di equilibrio ---------- */
-function cupola(key, name, R, seed, glass) {
-  const w = 2 * R + 6, h = R + 4, p = new Pic(w, h), cx = w / 2;
-  dome(p, cx, 0, R, (x, r, zf) => {
-    const a = Math.atan2(x + .5 - cx, zf), ring = Math.floor(r / 5), seg = Math.floor((a + Math.PI) / (Math.PI / 8));
-    if (glass) return (r % 5 === 4 || (seg + ring) % 1 === 0 && Math.abs(((a + Math.PI) / (Math.PI / 8)) % 1 - .5) > .44) ? 0xc8d8e0 : (r < R * .6 && hsh(x, r, seed) > .5 ? 0x5aa848 : 0x8ac8c0);
-    return (r % 6 === 5 || Math.abs(((a + Math.PI) / (Math.PI / 6)) % 1 - .5) > .45) ? 0xa8acb2 : jit(0xe6e8ea, seg, ring, seed, .04);
-  }, { fl: glass ? F_GLOW : 0 });
-  if (!glass) for (const [wx, wr] of [[cx - R * .55, R * .3], [cx + R * .4, R * .3]]) for (let j = 0; j < 4; j++) for (let i = 0; i < 5; i++) { const x = Math.round(wx + i), y = p.Y(Math.round(wr + j)); if (p.on(x, y)) p.set(x, y, 0xffd890, p.f[y * w + x], p.b[y * w + x], F_GLOW); }
-  for (let r = 0; r < 12; r++) for (let x = Math.round(cx - 6); x < Math.round(cx + 6); x++) { const dy = r + .5 - 6, edge = Math.abs(x + .5 - cx) > 4.5 || r > 10; p.set(x, p.Y(r), edge ? 0x8a8e94 : r < 9 && Math.abs(x + .5 - cx) < 3 ? 0x3a4a5a : 0xc8cacc, R + 6, Math.round(R * .5)); }
-  return def(key, name, p.rim(.9));
+/* ---------- case: teiera, tazza, tulipano, ghianda ---------- */
+const FT_SHADE = (c, r, R) => shade(c, .82 + r / R * .3);
+{ // teiera: corpo tondo, beccuccio, manico, coperchio col pomello, porta e finestrelle
+  const w = 96, h = 82, p = new Pic(w, h), cx = 48, R = 32;
+  for (let r = 0; r < 52; r++) { const y = r - 24, rr = Math.sqrt(Math.max(0, R * R - y * y * .9)); for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)))); const band = r > 34 && r < 38; p.set(x, p.Y(r), band ? 0xf0c040 : (hsh(Math.floor(x / 9), Math.floor(r / 9), 3) < .15 ? 0xf09ab8 : FT_SHADE(0x6ab0d8, r, 52)), zf, -zf); } }
+  for (let r = 52; r < 60; r++) { const rr = 16 - (r - 52) * .6; for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)))); p.set(x, p.Y(r), r === 52 ? 0xf0c040 : 0x5aa0c8, zf, -zf); } }
+  for (let j = -4; j <= 4; j++) for (let i = -4; i <= 4; i++) if (Math.hypot(i, j) < 4.4) p.set(cx + i, p.Y(64 + j), 0xf0c040, 4, -4);
+  for (let t = 0; t < 26; t++) { const x = cx + 30 + t * .9, y = p.Y(20 + t * .9), rr = 5 - t * .12; for (let j = -rr; j <= rr; j++) p.set(x, y + j, 0x5aa0c8, Math.round(rr), -Math.round(rr)); }
+  for (let a = 0; a < 40; a++) { const t = a / 39 * Math.PI, x = cx - 30 - Math.sin(t) * 14, r = 14 + (1 - Math.cos(t)) * 14; for (let k = -2; k <= 2; k++) p.set(x, p.Y(r) + k * .5, 0x5aa0c8, 3, -3); }
+  for (let j = 0; j < 18; j++) for (let i = 0; i < 12; i++) if (inArch(i, 17 - j, 12, 6)) p.set(cx - 6 + i, p.Y(j), j < 15 ? (i % 4 === 0 ? 0x8a5a3a : 0xa87048) : 0xf0c040, R + 1, -R);
+  for (const wx of [cx - 20, cx + 14]) for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) { const d = Math.hypot(i, j); if (d < 3.5) p.set(wx + i, p.Y(26 + j), d > 2.4 ? 0xf0c040 : 0xfff0a0, 28, -28, d > 2.4 ? 0 : F_GLOW); }
+  def('teiera', 'Casa nella teiera', p.rim(.9));
 }
-cupola('cupola_a', 'Cupola abitativa', 30, 3, false);
-cupola('cupola_b', 'Cupola dormitorio', 22, 5, false);
-cupola('serra', 'Serra', 26, 7, true);
-/* ---------- modulo a tubo: cilindro coricato, righe di bulloni, oblò ---------- */
-{
-  const w = 90, h = 30, p = new Pic(w, h), R = 12;
-  for (let x = 4; x < w - 4; x++) for (let r = 2; r < 2 + 2 * R; r++) { const dy = r + .5 - 2 - R, zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, R * R - dy * dy)))); p.set(x, p.Y(r), (x % 22 === 4) ? 0x8a8e94 : jit(r > R + 4 ? 0xe2e4e6 : 0xccced2, x >> 3, r >> 3, 9, .03), zf, -zf, F_TEXTOP); }
-  for (const ox of [18, 46, 72]) for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) { const d = Math.hypot(i, j); if (d < 3.4) p.set(ox + i, p.Y(2 + R + j), d > 2.4 ? 0x6a6e74 : 0xffd890, R + 1, -R, d > 2.4 ? 0 : F_GLOW); }
-  for (const lx of [10, w - 12]) for (let r = 0; r < 3; r++) p.set(lx, p.Y(r), 0x5a5e64, 4);
-  def('modulo', 'Modulo', p, { tex: 'tex_hull' });
+{ // tazza: un cilindro allargato in alto, il manico, il piattino; tetto di foglia
+  const w = 80, h = 60, p = new Pic(w, h), cx = 38;
+  for (let r = 0; r < 4; r++) { const rr = 32 - r; for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; p.set(x, p.Y(r), 0xf8f0e8, Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)) * .5))); } }
+  for (let r = 4; r < 38; r++) { const rr = 18 + (r - 4) * .22; for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)))); p.set(x, p.Y(r), r > 33 ? 0xd85a8a : (r % 9 === 0 ? 0xd85a8a : FT_SHADE(0xf8ece0, r, 38)), zf, -zf); } }
+  for (let a = 0; a < 30; a++) { const t = a / 29 * Math.PI, x = cx + 25 + Math.sin(t) * 9, r = 14 + (1 - Math.cos(t)) * 8; for (let k = -1; k <= 1; k++) p.set(x + k * .5, p.Y(r), 0xf8ece0, 3, -3); }
+  for (let r = 38; r < 56; r++) { const rr = 28 * (1 - Math.pow((r - 38) / 18, 1.4)); for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)) * .7)); p.set(x, p.Y(r), Math.abs(dx) < 1 ? 0x3a7a2a : jit(0x5aa848, x >> 1, r, 5, .1), zf, -zf, F_ROOF); } }
+  doorAt(p, cx - 5, 4, 10, 15, 18, { wood: 0x8a5a3a, frame: 0xd85a8a, deep: 3 }); windowAt(p, cx + 8, 18, 5, 5, 19, { lit: true, frame: 0xd85a8a, glass: 0xfff0a0 });
+  def('tazza', 'Casa nella tazza', p.rim(.9));
 }
-/* ---------- pannelli solari inclinati su gambe ---------- */
-{
-  const w = 70, h = 26, p = new Pic(w, h);
-  for (let k = 0; k < 18; k++) for (let x = 2; x < w - 2; x++) p.set(x, p.Y(8 + k), (x % 8 === 1 || k % 6 === 5) ? 0x8a9aaa : jit(0x22345e, x >> 3, k / 6 | 0, 11, .08), 14 - k, 12 - k, F_ROOF | F_TEXTOP);
-  for (const lx of [8, w - 9]) for (let r = 0; r < 12; r++) p.set(lx, p.Y(r), 0x6a6e74, 6, 4);
-  def('pannelli', 'Pannelli solari', p, { tex: 'tex_panel' });
+{ // tulipano: gambo, foglie, il fiore chiuso con la finestra accesa
+  const w = 56, h = 104, p = new Pic(w, h), cx = 28;
+  cyl(p, cx, 0, 54, 4, () => 0x4a8a3a);
+  for (const [dir, r0] of [[-1, 10], [1, 22]]) for (let k = 0; k < 24; k++) for (let j = 0; j < 6 - Math.abs(k - 12) * .4; j++) p.set(cx + dir * (3 + k * .8), p.Y(r0 + k * .9 + j), jit(0x5aa848, k, j, 9, .1), 2);
+  for (let r = 0; r < 46; r++) { const rr = 22 * Math.sin(Math.min(1, (r + 4) / 40) * Math.PI * .62) * (r > 34 ? 1 - (r - 34) / 16 : 1) + 1; for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)))); const tip = r > 36 && Math.abs(((dx / rr * 1.5 + 1.5) % 1) - .5) > .32; if (tip) continue; p.set(x, p.Y(54 + r), shade(0xe84a6a, .8 + r / 46 * .35 + (Math.abs(dx) < rr * .3 ? .08 : 0)), zf, -zf); } }
+  for (let j = 0; j < 8; j++) for (let i = 0; i < 8; i++) if (inArch(i, 7 - j, 8, 4)) p.set(cx - 4 + i, p.Y(70 + j), 0xfff0a0, 20, -20, F_GLOW);
+  doorAt(p, cx - 3, 0, 6, 10, 4, { wood: 0x8a5a3a, frame: 0x3a6a2a, deep: 2, square: true });
+  def('tulipano', 'Casa nel tulipano', p.rim(.9));
 }
-/* ---------- antenna parabolica e traliccio ---------- */
-{
-  const w = 46, h = 70, p = new Pic(w, h), cx = 23;
-  for (let r = 0; r < 34; r++) for (const dx of [-5 + r * .12, 5 - r * .12]) p.set(cx + dx, p.Y(r), 0x8a8e94, 3, -3);
-  for (let r = 0; r < 34; r += 5) for (let x = Math.round(cx - 5 + r * .12); x < Math.round(cx + 5 - r * .12); x++) p.set(x, p.Y(r), 0x6a6e74, 2, -2);
-  for (let j = -18; j <= 18; j++) for (let i = -18; i <= 18; i++) { const d = Math.hypot(i, j * 1.15); if (d > 18) continue; const zf = Math.round(4 + (d / 18) * (d / 18) * 8); p.set(cx + i, p.Y(50 + j), d > 16.6 ? 0x9a9ea4 : jit(0xe8eaec, (i + 20) >> 2, (j + 20) >> 2, 13, .03), zf, zf - 3); }
-  for (let t = 0; t < 12; t++) p.set(cx, p.Y(50) - 0, 0x6a6e74, 16 + t, 14 + t);
-  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) p.set(cx + i, p.Y(50 + j), 0xe84a3a, 28, 26, F_GLOW);
-  def('antenna', 'Antenna', p);
+{ // ghianda: corpo ovale, cappuccio a scaglie, porta tonda
+  const w = 50, h = 58, p = new Pic(w, h), cx = 25;
+  for (let r = 0; r < 38; r++) { const y = r - 22, rr = 20 * Math.sqrt(Math.max(0, 1 - Math.pow(y / 24, 2))) * (r < 4 ? .8 + r * .05 : 1); for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)))); p.set(x, p.Y(r), FT_SHADE(0xc8904a, r, 38), zf, -zf); } }
+  for (let r = 36; r < 54; r++) { const rr = 23 * Math.sqrt(Math.max(0, 1 - Math.pow((r - 36) / 18, 2))); for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)))); p.set(x, p.Y(r), ((x >> 2) + (r >> 2)) % 2 ? 0x7a5a32 : 0x8a6a3a, zf, -zf); } }
+  for (let r = 54; r < 58; r++) p.set(cx, p.Y(r), 0x5a3a22, 2);
+  for (let j = -6; j <= 6; j++) for (let i = -6; i <= 6; i++) { const d = Math.hypot(i, j); if (d < 6.4) p.set(cx + i, p.Y(8 + j), d > 5 ? 0x7a5a32 : 0x4a8a6a, 21, -20); }
+  def('ghianda', 'Casa nella ghianda', p.rim(.9));
 }
-/* ---------- rover a sei ruote ---------- */
+/* ---------- margherita gigante, goccia-lanterna, barche, lumaca ---------- */
 {
-  const w = 64, h = 32, p = new Pic(w, h);
-  p.wall(6, 8, 52, 12, (x, r) => r === 11 ? 0xa8acb0 : (x % 13 === 6 ? 0xa8acb0 : 0xe2e4e6), 14, -14, F_WRAP | F_TEXTOP);
-  p.wall(30, 20, 24, 9, (x, r) => (r > 3 && x > 34 && x < 50) ? 0x3a5a7a : 0xd0d2d6, 11, -11, F_WRAP | F_TEXTOP);
-  for (const wx of [12, 32, 52]) for (let j = -6; j <= 6; j++) for (let i = -6; i <= 6; i++) { const d = Math.hypot(i, j); if (d > 6.4) continue; p.set(wx + i, p.Y(6 + j), d > 5 ? 0x2a2a2e : d < 2 ? 0x8a8e94 : (i + j) % 3 === 0 ? 0x3a3a40 : 0x4a4a52, 16, 10); }
-  for (let r = 20; r < 30; r++) p.set(12, p.Y(r), 0x6a6e74, 2); for (let i = -2; i <= 2; i++) p.set(12 + i, p.Y(30), 0xe84a3a, 3, 1, F_GLOW);
-  for (let j = 0; j < 3; j++) for (let i = 0; i < 4; i++) p.set(57 + i, p.Y(12 + j), 0xfff0b0, 15, 13, F_GLOW);
-  def('rover', 'Rover', p, { tex: 'tex_hull' });
-}
-/* ---------- il razzo sulle zampe ---------- */
-{
-  const w = 60, h = 140, p = new Pic(w, h), cx = 30, R = 11;
-  cyl(p, cx, 14, 90, R, (x, r) => r % 22 === 21 ? 0x8a8e94 : (r > 70 && r < 76) ? 0x2a4a8a : jit(x < cx ? 0xeceef0 : 0xd2d4d8, x >> 2, r >> 3, 21, .02));
-  for (let r = 104; r < 136; r++) { const rr = R * (1 - (r - 104) / 32) + .5; for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { const dx = x + .5 - cx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)))); p.set(x, p.Y(r), r > 128 ? 0xe84a3a : x < cx ? 0xeceef0 : 0xd2d4d8, zf, -zf); } }
-  for (const [lx, d] of [[-1, 1], [1, 1]]) for (let t = 0; t < 22; t++) { const x = cx + lx * (R + t * .7), r = 22 - t; p.set(x, p.Y(r), 0x6a6e74, 3, -3); }
-  for (let r = 4; r < 14; r++) { const rr = 6 + (14 - r) * .5; for (let x = Math.floor(cx - rr); x <= Math.ceil(cx + rr); x++) { if (Math.abs(x + .5 - cx) > rr) continue; p.set(x, p.Y(r), 0x3a3a40, 6, -6); } }
-  for (const [wx, wr] of [[cx - 3, 84], [cx - 3, 60]]) for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) if (Math.hypot(i, j) < 3.2) p.set(wx + 3 + i, p.Y(wr + j), 0xffd890, R + 1, -R, F_GLOW);
-  def('razzo', 'Razzo', p);
-}
-/* ---------- serbatoi, casse, rocce ---------- */
-{
-  const t = new Pic(36, 26); for (const [tx, hh] of [[8, 22], [20, 24], [31, 18]]) { cyl(t, tx, 0, hh, 5, (x, r) => r === hh - 1 ? 0x9a9ea4 : r % 8 === 2 ? 0xe8c040 : 0xd8dadc); } def('serbatoi', 'Serbatoi', t);
-  const c = new Pic(30, 16); for (const [cx, cw, ch] of [[0, 12, 10], [13, 10, 14], [24, 6, 8]]) c.wall(cx, 0, cw, ch, (x, r) => (r === ch - 1 || x === cx || x === cx + cw - 1) ? 0x6a6e74 : 0xe8a83a, 6, -6, F_WRAP); def('casse', 'Casse', c);
-  for (const [key, w, h, s] of [['roccia_a', 30, 18, 1], ['roccia_b', 20, 12, 2]]) { const r = new Pic(w, h); for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const e = Math.hypot((x - w / 2) / (w / 2), (y - h) / h) + (vn(x / 4, y / 4, s) - .5) * .4; if (e <= 1) r.set(x, y, jit(mix(0x7a3e2a, 0x9a5034, vn(x / 5, y / 5, s + 3)), x >> 1, y >> 1, s + 4, .1), 1); } r.inflate(14, 2); def(key, 'Roccia', r.rim(.85)); }
-  const l = new Pic(10, 38); for (let r = 0; r < 32; r++) l.set(5, l.Y(r), 0x8a8e94, 1); for (let r = 30; r < 36; r++) for (let x = 3; x < 8; x++) l.set(x, l.Y(r), 0xfff0c0, 2, -2, F_GLOW); def('lamp', 'Faro', l);
-  const b = new Pic(16, 32); for (let r = 0; r < 24; r++) b.set(8, b.Y(r), 0x8a8e94, 1); for (let r = 20; r < 32; r++) for (let x = 9; x < 16; x++) b.set(x, b.Y(r), (x + r) % 4 < 2 ? 0xe84a3a : 0xf2f0ea, 1); def('bandiera', 'Bandiera', b);
+  const g = new Pic(40, 72), cx = 20; for (let r = 0; r < 48; r++) for (let x = cx - 1; x < cx + 2; x++) g.set(x, g.Y(r), 0x4a8a3a, 2);
+  for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; for (let t = 5; t < 18; t++) for (let u = -2; u <= 2; u++) g.set(cx + Math.cos(a) * t - Math.sin(a) * u * .6, g.Y(56 + Math.sin(a) * t * .9 + Math.cos(a) * u * .5), 0xffffff, 2, -1); }
+  for (let j = -5; j <= 5; j++) for (let i = -5; i <= 5; i++) if (Math.hypot(i, j) < 5.4) g.set(cx + i, g.Y(56 + j), jit(0xf8c830, i, j, 3, .14), 4, -2);
+  def('margherita', 'Margherita gigante', g);
+  const l = new Pic(14, 34); for (let r = 0; r < 24; r++) l.set(7 + Math.round(Math.sin(r / 6)), l.Y(r), 0x5aa848, 1); for (let j = -5; j <= 6; j++) for (let i = -5; i <= 5; i++) { const d = Math.hypot(i, (j > 0 ? j * .8 : j)); if (d < 5 - (j > 2 ? (j - 2) * .9 : 0)) l.set(7 + i, l.Y(28 + j), d < 1.6 && j < 0 ? 0xffffff : 0xb8f0ff, 4, -4, F_GLOW); } def('goccia', 'Goccia di rugiada', l);
+  const b = new Pic(70, 18); for (let x = 2; x < 68; x++) { const t = (x - 2) / 65, beam = Math.sin(t * Math.PI), lift = Math.round(Math.pow(Math.abs(t - .5) * 2, 2) * 6); for (let r = 1 + lift; r < 6 + lift; r++) p_set(b, x, r, r === 5 + lift ? 0x3a7a2a : jit(0x5aa848, x >> 2, r, 5, .1), Math.max(1, Math.round(beam * 8))); if (x % 8 === 4) for (let r = 3; r < 6 + lift; r++) b.set(x, b.Y(r), 0x3a7a2a, Math.max(1, Math.round(beam * 8)) + 1, -Math.max(1, Math.round(beam * 8))); } def('barca_foglia', 'Barca di foglia', b);
+  function p_set(pic, x, r, c, z) { pic.set(x, pic.Y(r), c, z, -z); }
+  const n = new Pic(50, 40), ncx = 25; for (let r = 0; r < 14; r++) { const rr = 22 * Math.sqrt(Math.max(0, 1 - Math.pow((13 - r) / 14, 2))); for (let x = Math.floor(ncx - rr); x <= Math.ceil(ncx + rr); x++) { const dx = x + .5 - ncx; if (Math.abs(dx) > rr) continue; const zf = Math.max(1, Math.round(Math.sqrt(Math.max(0, rr * rr - dx * dx)) * .6)); n.set(x, n.Y(r), r === 13 ? 0x5a3a22 : ((x + r * 2) % 7 < 2 ? 0x6a4a2a : 0x9a6a3a), zf, -zf); } }
+  for (let r = 13; r < 38; r++) n.set(ncx, n.Y(r), 0x5a3a22, 1); for (let r = 0; r < 20; r++) for (let x = 0; x < 16 - r * .6; x++) n.set(ncx + 1 + x, n.Y(16 + r), shade(0xf8b0c8, .9 + x / 30), 1); def('noce', 'Barca di noce', n);
+  const s = new Pic(34, 22); for (let j = -9; j <= 9; j++) for (let i = -9; i <= 9; i++) { const d = Math.hypot(i, j); if (d > 9.4) continue; const a = Math.atan2(j, i) + d * .5; s.set(20 + i, s.Y(11 + j), (Math.floor(a * 1.5) % 2) ? 0xd8904a : 0xe8b060, 4, -4); }
+  for (let x = 2; x < 26; x++) for (let r = 0; r < 4; r++) s.set(x, s.Y(r), 0xc8b8a8, 3); for (let r = 4; r < 9; r++) for (let x = 2; x < 7; x++) s.set(x, s.Y(r), 0xc8b8a8, 3); for (const ex of [3, 5]) for (let r = 9; r < 14; r++) s.set(ex, s.Y(r), 0xc8b8a8, 1); def('lumaca', 'Lumaca', s);
 }
 
-/* ---------- figurine: tute e caschi a bolla ---------- */
+/* ---------- figurine: le fate hanno le ali ---------- */
+const wings = (put, view) => { const rows = [7, 8, 9, 10, 11, 12]; if (view === 'side') { for (const y of rows) for (let x = 1; x < 4 - Math.abs(y - 9.5) * .4; x++) put(x, y, 0xd8f4ff); return; } for (const y of rows) { const span = 3 - Math.round(Math.abs(y - 9.5) * .5); for (let i = 0; i < span; i++) { put(i, y, 0xd8f4ff); put(11 - i, y, 0xd8f4ff); } } };
+const petalHat = { front: ['.....kk.....', '...kkkkkk...', '..kkkkkkkk..', '.kkkkkkkkkk.'], back: ['.....kk.....', '...kkkkkk...', '..kkkkkkkk..', '.kkkkkkkkkk.'], side: ['......kk....', '....kkkkkk..', '..kkkkkkkk..', '.kkkkkkkkkk.'] };
 const CHARS = [
-  { name: 'Viandante', helmet: true, pal: { h: 0x4a3226, s: 0xe8c09a, c: 0xe8e8ec, b: 0xe86a2a, p: 0xd8d8de, f: 0x6a6a72, w: 0xc8e4f4, g: 0x9a9ea4 } },
-  { name: 'Comandante Vega', helmet: true, pal: { h: 0x2a1c18, s: 0xc89068, c: 0xe86a2a, b: 0x2a2a30, p: 0xe86a2a, f: 0x3a3a40, w: 0xc8e4f4, g: 0x8a8e94 } },
-  { name: 'Ingegnere Kato', helmet: true, pal: { h: 0x1a1a20, s: 0xe8c8a0, c: 0xe8e8ec, b: 0x2a6ad8, p: 0xd8d8de, f: 0x5a5a62, w: 0xc8e4f4, g: 0x2a6ad8 } },
-  { name: 'Botanica Mira', helmet: true, pal: { h: 0x8a3a2a, s: 0xf2cba4, c: 0x5aa848, b: 0xe8e8ec, p: 0x3a4a3a, f: 0x3a3a40, w: 0xc8e4f4, g: 0x5aa848 } },
-  { name: 'Bip', helmet: true, scale: .75, pal: { h: 0x6a6e74, s: 0x8a8e94, e: 0x5ae8f0, c: 0xd8dadc, b: 0xe8c040, p: 0x9a9ea4, f: 0x5a5e64, w: 0xa8c8d8, g: 0x6a6e74 } },
+  { name: 'Viandante', hat: { front: ['............', '...kkkkkk...', '..kkkkkkkk..', 'kkkkkkkkkkKK'], back: ['............', '...kkkkkk...', '..kkkkkkkK..', 'kkkkkkkkkKKK'], side: ['............', '...kkkkkk...', '..kkkkkkkK..', '.kkkkkkkkkkK'] }, pal: { h: 0x4a3226, s: 0xe8c09a, c: 0x6a8ab8, b: 0x6a4a30, p: 0x5a5a72, f: 0x3a2a20, k: 0x8a6a40 } },
+  { name: 'Fata Lucina', robe: true, hat: petalHat, tool: wings, scale: .8, pal: { h: 0xf8e0a0, s: 0xf8d8c8, c: 0xf8b0d0, b: 0xfff0a0, f: 0xd890b0, k: 0xf870a8 } },
+  { name: 'Fata Rugiada', robe: true, hat: petalHat, tool: wings, scale: .8, pal: { h: 0x8ac8e8, s: 0xf8d8c8, c: 0xb8e4f8, b: 0xffffff, f: 0x8ab8d8, k: 0x6ab0e8 } },
+  { name: 'Folletto Pino', hat: petalHat, scale: .74, pal: { h: 0x6a3a22, s: 0xf2cba4, c: 0x5aa848, b: 0x8a5a3a, p: 0x7a5a3a, f: 0x3a2a20, k: 0x3a7a2a } },
+  { name: 'Petalina', robe: true, tool: wings, scale: .64, pal: { h: 0xe8a060, s: 0xf8d8c8, c: 0xfff0a0, b: 0xf870a8, f: 0xd8a040 } },
 ];
 
 /* ---------- impaginazione: tutti i disegni in un solo foglio, a ripiani ---------- */
@@ -817,38 +788,34 @@ function npc(row, x, z, face, lines, voice) {
   return a;
 }
 
-/* ---------- Base su Marte: cupole al centro, la serra a ovest, il razzo sulla piazzola, il cratere a est, l'antenna sulla mesa ---------- */
-const pCup = thing('cupola_a', 19, 10, 1.75, 1.5);
-const pDorm = thing('cupola_b', 28.6, 10.8, 1.3, 1.15);
-const pSerra = thing('serra', 10.2, 10.6, 1.55, 1.3);
-spot(pSerra.x, .9, pSerra.z + .2, 2.6, .8, false);
-thing('modulo', 24, 9.4, 2.4, .7);
-thing('pannelli', 35.6, 13.6, 2.1, .7); thing('pannelli', 35.6, 9.4, 2.1, .7);
-const pRover = thing('rover', 26.4, 19.4, 1.7, .9);
-const pRazzo = thing('razzo', 9.6, 20.2, 1, 1);
-thing('serbatoi', 4.4, 13.6, 1, .4); thing('casse', 14.8, 13.8, .9, .4); thing('casse', 31, 24.4, .9, .4);
-[['roccia_a', 3, 25], ['roccia_a', 38, 26], ['roccia_b', 24, 25.6], ['roccia_b', 17.4, 23.6], ['roccia_b', 37.6, 7.6], ['roccia_a', 2.6, 18.2]].forEach(([k, x, z]) => thing(k, x, z, .6, .35));
-// sulla mesa
-const pAnt = thing('antenna', 14, 2.6, .8, .7); spot(pAnt.x, pAnt.y + 3.1, pAnt.z + 1.6, 1, .4);
-thing('bandiera', 22, 3.4, .1, .1);
-thing('pannelli', 29.6, 2.8, 2.1, .7);
-// fari
-[[16.4, 13.4], [22.4, 13.6], [13.2, 18.2], [6.4, 17.2], [27.6, 16.8], [31.6, 14.6]].forEach(([x, z]) => { const p = thing('lamp', x, z, .1, .1); spot(p.x, p.y + 2.1, p.z, 2.4, .9); });
+/* ---------- Porto delle Fate: case a nord del fiume, il porticciolo coi pontili di ninfea, margherite e gocce lungo i sentieri ---------- */
+const pTei = thing('teiera', 14.4, 6.6, 2, 1.6);
+const pTaz = thing('tazza', 24.6, 6.2, 1.9, 1.2);
+const pTul = thing('tulipano', 34.2, 6.4, .5, .5); thing('tulipano', 5, 6.8, .5, .5, { flip: true });
+const pGh = thing('ghianda', 4.6, 24.6, 1.2, 1.2); thing('ghianda', 36, 24.4, 1.2, 1.2, { flip: true }); thing('tazza', 20.4, 26, 1.9, 1.2, { flip: true });
+[[pTei.x - 1.25, .9, pTei.z + 1.8], [pTei.x + 1.15, .9, pTei.z + 1.8]].forEach(([x, y, z]) => spot(x, y, z, 1.4, .5, false));
+// margherite, gocce di rugiada, la lumaca
+[[19.2, 11.8], [2.4, 14.2], [37.8, 13.6], [12.6, 22], [27.8, 22.2], [33.6, 11.6]].forEach(([x, z], i) => thing('margherita', x, z, .2, .2, { flip: i % 2 === 1 }));
+[[8.2, 11.4], [16.4, 9], [22.6, 9.2], [31.6, 10.4], [7.6, 21.8], [16.8, 24.6], [24, 23.6], [31.6, 21.4], [1.8, 19.6], [38.2, 19.8]].forEach(([x, z]) => { const p = thing('goccia', x, z, .1, .1); spot(p.x, p.y + 1.7, p.z, 2.2, .8); });
+const pLum = thing('lumaca', 26.8, 13.4, .6, .3);
+// il porto: barca di foglia e guscio di noce sul fiume
+const pFoglia = thing('barca_foglia', 19.6, FT_RIVER(19.6) + .2, 0, 0, { dy: -.08 });
+const pNoce = thing('noce', 15.4, FT_RIVER(15.4) - .1, 0, 0, { dy: -.1 });
 
 // cose da guardare
-look(pCup.x, pCup.z + 2.4, 1.2, 'Entra nella cupola', 'Cupola abitativa', ['Dentro: cucina, laboratorio, sei cuccette. La pressione è quella di una montagna alta.', 'Mezza sfera vera: ogni pannello sa quanto sporge.'], 220);
-look(pSerra.x, pSerra.z + 2, 1.2, 'Guarda la serra', 'Serra', ['Patate, fagioli, basilico. Crescono in terra marziana lavata e concimata.', 'Il vetro si accende di notte: le lampade per le piante restano accese.'], 300);
-look(pRazzo.x, pRazzo.z + 2.2, 1.3, 'Guarda il razzo', 'Razzo', ['Torna in orbita ogni ventisei mesi, quando la Terra è più vicina.', 'Sta sulla piazzola, due pixel più alta del suolo, con le zampe aperte.'], 140);
-look(CRATER.x, CRATER.z + 3.4, 1.4, 'Guarda il cratere', 'Cratere', ['Un meteorite, molto tempo fa. Il fondo è sei pixel sotto il suolo, l’orlo quattro sopra.'], 180);
-look(pAnt.x, pAnt.z + 1.6, 1.2, 'Guarda l’antenna', 'Antenna', ['Un messaggio verso la Terra ci mette da tre a ventidue minuti, secondo dove siamo nelle orbite.'], 260);
-look(pRover.x, pRover.z + 1.4, 1.3, 'Guarda il rover', 'Rover', ['Sei ruote, batterie per due giorni, un braccio per prendere i sassi interessanti.', 'Le tracce sul terreno sono le sue: a scacchi, una sopra l’altra.'], 200);
-look(30.4, 7.4, 1.4, 'Guarda il cielo', 'Cielo', () => tod === 2 ? ['Il tramonto qui è blu. La polvere rossa lascia passare il blu solo vicino al sole.', 'Sulla Terra è il contrario.'] : tod === 1 ? ['Di giorno il cielo è color caramello, per la polvere sospesa.', 'Premi T: al tramonto diventa blu.'] : tod === 3 ? ['Due lune piccole, Fobos e Deimos. Una sorge a ovest, l’altra a est.'] : ['All’alba il cielo è viola, poi si scalda piano.']);
+look(pTei.x, pTei.z + 2.2, 1.3, 'Bussa alla teiera', 'Casa nella teiera', ['Dentro profuma di tè alla menta, anche se nessuno ricorda l’ultima volta che è stato preparato.', 'Il beccuccio fa da comignolo; il manico, da scala per il tetto.'], 340);
+look(pTaz.x, pTaz.z + 1.6, 1.2, 'Guarda la tazza', 'Casa nella tazza', ['Il tetto è una foglia di rosa, piegata in due. Quando piove fa da grondaia.'], 380);
+look(pTul.x, pTul.z + .9, 1, 'Guarda il tulipano', 'Casa nel tulipano', ['Una stanza sola, in cima al gambo. Ci si sale arrampicandosi sulle foglie.'], 420);
+look(pFoglia.x, pFoglia.z - 1.6, 1.4, 'Guarda le barche', 'Il porto', ['Una barca di foglia e un guscio di noce con la vela di petalo. Partono quando il vento è gentile.', 'Il fiume è tre pixel più basso della riva; le ninfee sono un pixel più alte dell’acqua: ci si cammina sopra.'], 300);
+look(9.6, FT_RIVER(9.6) + 1.7, 1.2, 'Guarda le ninfee', 'Ninfee', ['Tre ninfee di traverso fanno da ponte. Salta da una all’altra.'], 360);
+look(pLum.x, pLum.z + .8, .9, 'Saluta la lumaca', 'Lumaca', ['Si chiama Lenta. Porta la posta. Arriva sempre, prima o poi.'], 160);
+look(16.4, 10, 1, 'Guarda la goccia', 'Goccia di rugiada', ['Una goccia rimasta su un filo d’erba, grande come una lanterna. Di notte si accende.'], 520);
 
 // abitanti
-npc(1, 21.6, 14.6, [0, 1], ['Comandante Vega. Benvenuto alla base. Tieni il casco chiuso, sempre.', 'Siamo in sei. Tra due anni arriva il cambio.', 'Il tramonto blu non mi stanca mai. Lo guardo tutte le sere dalla cupola.'], 160);
-npc(2, 28.6, 20.6, [0, 1], ['La polvere entra dappertutto: nei giunti, nei filtri, nei sogni.', 'Il rover ha fatto trecento chilometri. Ne mancano altri mille per la scienza.', 'I pannelli si puliscono a mano. Lo fa Bip, quando ha voglia.'], 220);
-npc(3, 12.4, 13.4, [0, 1], ['Il primo pomodoro marziano l’abbiamo diviso in sei. Era piccolo e acido. Perfetto.', 'Le piante crescono storte: la gravità è un terzo di quella della Terra.', 'Se vuoi, ti do un rametto di basilico. Profuma di casa.'], 320);
-npc(4, 18.4, 20.8, [0, 1], ['Bip. Bip bip. (Pulisco pannelli. Conto sassi. Guardo il cielo.)', 'Bip! (Il cratere è il mio posto preferito.)', 'Bip bip bip. (Ho contato 4.211 sassi. Poi ho perso il conto.)'], 900);
+npc(1, 17.4, 11.2, [0, 1], ['Fata Lucina. Accendo le gocce di rugiada al tramonto e le spengo all’alba.', 'Le case qui sono fatte di cose dimenticate: teiere, tazze, ghiande.', 'Se vedi una lucciola triste, dille una barzelletta.'], 560);
+npc(2, 22.4, 20.6, [0, 1], ['Fata Rugiada, capitana del porto. Il porto è piccolo, ma la capitana è seria.', 'Il guscio di noce regge due fate e un folletto. Tre fate, no.', 'La nebbia dell’alba viene dal fiume. È fatta di pixel bianchi che passano piano.'], 600);
+npc(3, 30.4, 13, [0, 1], ['Folletto Pino. Io sistemo le ninfee quando la corrente le sposta.', 'La lumaca è più veloce di quanto sembra. Non molto, ma un po’.', 'Hai visto la teiera? L’ho trovata io. Era di un gigante.'], 300);
+npc(4, 11.6, 23.6, [0, 1], ['Io volo solo un pochino. Le ali mi crescono ancora.', 'La margherita più grande è mia. Le altre sono di tutti.', 'Di notte i puntini sul muschio si accendono come stelle cadute.'], 720);
 
 /* ---------- vita: pulviscolo di giorno, lucciole di notte, fumo dai camini ---------- */
 const life = [];
